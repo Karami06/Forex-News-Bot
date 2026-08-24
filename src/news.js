@@ -21,6 +21,7 @@ export async function handleNews(env, cid, mid, nt, cfg, lang) {
     console.log(`[NEWS] cfg.c=${JSON.stringify(cfg.c)} cfg.i=${JSON.stringify(cfg.i)} sample=${JSON.stringify(news[0])}`);
   }
   const msg = fmtNews(dayItems, nt, cfg);
+  console.log("[NEWS] msg length:", msg.length, "preview:", msg.slice(0, 100));
   if (msg.length > 4000) {
     await tgApi(env, "editMessageText", { chat_id: cid, message_id: mid, text: msg.slice(0, 4000), parse_mode: "HTML", reply_markup: mainMenuKb(lang) });
     const rest = msg.slice(4000);
