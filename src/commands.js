@@ -101,5 +101,37 @@ export async function handleCmd(env, cid, ct, text, msg) {
   } else if (cmd === "/forcesend") {
     const news = await refreshNews(env);
     await tgSend(env, cid, `\u{1F504} Cache refreshed. ${news.length} items available.`);
+    return;
+  } else if (cmd === "/export") {
+    const cfg = await getCfg(env, cid);
+    const exportData = {
+      c: cfg.c,
+      cc: cfg.cc,
+      i: cfg.i,
+      tt: cfg.tt,
+      tm: cfg.tm,
+      tz: cfg.tz,
+      lang: cfg.lang,
+      subs: cfg.subs,
+      pre: cfg.pre,
+      post: cfg.post,
+      auto: cfg.auto,
+      days: cfg.days,
+    };
+    const encoded = btoa(JSON.stringify(exportData));
+    await tgSend(env, cid, `\u{1F3AB} *Export Config*\n\nCopy this code to backup or share your settings:\n\n\`${encoded}\``);
+    return;
+  } else if (cmd === "/import") {
+    if (!args.length) return tgSend(env, cid, "Usage: /import <code>");
+    try {
+      const decoded = JSON.parse(atob(args[0]));
+      for (const [k, v] of Object.entries(decoded)) {
+        await setCfg(env, cid, k, v);
+      }
+      await tgSend(env, cid, "\u{2705} Settings imported successfully!");
+    } catch (e) {
+      await tgSend(env, cid, "\u{274C} Invalid code. Make sure you copied the full export code.");
+    }
+    return;
   }
 }

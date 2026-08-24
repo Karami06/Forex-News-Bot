@@ -52,6 +52,10 @@ export const TR = {
     key_unemploy: "Jobs data — labor market health",
     key_retail: "Consumer spending — economic strength signal",
     key_pmi: "Manufacturing/services health — leading indicator",
+    export_config: "Export Config",
+    import_success: "Settings imported successfully!",
+    import_invalid: "Invalid code. Make sure you copied the full export code.",
+    import_usage: "Usage: /import <code>",
   },
   fa: {
     welcome: "خوش آمد {name}!",
@@ -104,6 +108,10 @@ export const TR = {
     key_unemploy: "داده بیکاری — سلامت بازار کار",
     key_retail: "مصرف مصرف‌کنندگان — سیگنال قدرت اقتصادی",
     key_pmi: "سلامت تولید/خدمات — شاخص پیشرو",
+    export_config: "خروجی تنظیمات",
+    import_success: "تنظیمات با موفقیت وارد شد!",
+    import_invalid: "کد نامعتبر. اطمینان حاصل کنید که کد کامل کپی شده است.",
+    import_usage: "استفاده: /import <code>",
   },
   ar: {
     welcome: "مرحبا {name}!",
@@ -156,6 +164,10 @@ export const TR = {
     key_unemploy: "بيانات البطالة — صحة سوق العمل",
     key_retail: "إنفاق المستهلكين — إشارة القوة الاقتصادية",
     key_pmi: "صحة التصنيع/الخدمات — مؤشر رائد",
+    export_config: "تصدير الإعدادات",
+    import_success: "تم استيراد الإعدادات بنجاح!",
+    import_invalid: "كود غير صالح. تأكد من نسخ الكود بالكامل.",
+    import_usage: "الاستخدام: /import <code>",
   },
   ru: {
     welcome: "Добро, {name}!",
@@ -208,6 +220,10 @@ export const TR = {
     key_unemploy: "Данные по безработице — здоровье рынка труда",
     key_retail: "Потребительские расходы — сигнал силы экономики",
     key_pmi: "Здоровье производства/услуг — ведущий индикатор",
+    export_config: "Экспорт настроек",
+    import_success: "Настройки успешно импортированы!",
+    import_invalid: "Неверный код. Убедитесь, что скопировали полный код.",
+    import_usage: "Использование: /import <code>",
   },
   es: {
     welcome: "¡Bienvenido {name}!",
@@ -260,6 +276,10 @@ export const TR = {
     key_unemploy: "Datos de desempleo — salud del mercado laboral",
     key_retail: "Gasto del consumidor — señal de fortaleza económica",
     key_pmi: "Salud manufacturera/servicios — indicador adelantado",
+    export_config: "Exportar Configuración",
+    import_success: "¡Configuración importada con éxito!",
+    import_invalid: "Código inválido. Asegúrese de copiar el código completo.",
+    import_usage: "Uso: /import <code>",
   },
   zh: {
     welcome: "欢迎 {name}！",
@@ -312,6 +332,10 @@ export const TR = {
     key_unemploy: "失业数据 — 劳动力市场健康",
     key_retail: "消费者支出 — 经济强弱信号",
     key_pmi: "制造业/服务业健康 — 领先指标",
+    export_config: "导出配置",
+    import_success: "设置导入成功！",
+    import_invalid: "代码无效。请确保复制了完整代码。",
+    import_usage: "用法: /import <code>",
   },
   ja: {
     welcome: "ようこそ {name}！",
@@ -364,6 +388,10 @@ export const TR = {
     key_unemploy: "失業率データ — 労働市場の健全性",
     key_retail: "小売売上高 — 経済強弱のシグナル",
     key_pmi: "製造業/サービス業PMI — 先行指標",
+    export_config: "設定のエクスポート",
+    import_success: "設定を正常にインポートしました！",
+    import_invalid: "無効なコードです。完全なコードをコピーしたか確認してください。",
+    import_usage: "使用方法: /import <code>",
   },
 };
 
