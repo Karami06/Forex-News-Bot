@@ -9,30 +9,7 @@ node_modules/
 Info.txt
 .env
 .env.local
-.env.*
 
-# Internal scripts (not for GitHub)
-sync-and-deploy.sh
-create-release.sh
-setup.js
-
-# Test files
-test-*.json
-test-*.js
-
-# IDE / OS
-.vscode/
-.idea/
-.mimocode/
+# OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Build outputs
-dist/
-build/
