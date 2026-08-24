@@ -206,7 +206,6 @@ export async function handleCb(env, cb) {
   if (data.startsWith("news:")) {
     const nt = data.slice(5);
     await tgAnswer(env, cbid, "");
-    console.log("[CALLBACK] news: handler called, nt:", nt, "cid:", cid, "mid:", mid);
     return handleNews(env, cid, mid, nt, cfg, lang);
   }
 }

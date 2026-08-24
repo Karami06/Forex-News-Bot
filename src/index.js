@@ -14,14 +14,9 @@ export default {
     if (request.method === "POST" && url.pathname === "/webhook") {
       try {
         const body = await request.json();
-        console.log("[WEBHOOK] Received:", JSON.stringify(body).slice(0, 200));
-        if (body.callback_query) {
-          console.log("[WEBHOOK] Callback query:", body.callback_query.data, "from:", body.callback_query.from?.id, "cid:", body.callback_query.message?.chat?.id, "mid:", body.callback_query.message?.message_id);
-          await handleCb(env, body.callback_query);
-        }
+        if (body.callback_query) await handleCb(env, body.callback_query);
         else if (body.message) {
           const m = body.message;
-          console.log("[WEBHOOK] Message:", m.text, "from:", m.from?.id, "cid:", m.chat?.id);
           if ((m.text || "").startsWith("/")) await handleCmd(env, m.chat.id, m.chat.type, m.text, m);
         }
         return new Response("OK");
