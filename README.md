@@ -19,7 +19,6 @@ A professional Telegram bot that delivers economic news from Fair Economy to tra
 - **TradingView Integration** — Direct chart links for every news item
 - **Strikethrough for Released News** — Past events shown with strikethrough in the news list
 - **7 Languages** — Full localization for global users
-- **Daily News Cache** — Fetches news once daily at 00:00 UTC + incremental every 15 minutes, serves all requests from cache to reduce API load
 
 ---
 
@@ -28,24 +27,9 @@ A professional Telegram bot that delivers economic news from Fair Economy to tra
 | Technology | Purpose |
 |------------|---------|
 | Cloudflare Workers | Serverless runtime (free tier) |
-| Cloudflare KV | Persistent configuration storage & news cache |
+| Cloudflare KV | Persistent configuration storage |
 | Telegram Bot API | Messaging platform |
 | Fair Economy | Economic news data source |
-
----
-
-## How It Works
-
-1. **Daily Full Fetch (00:00 UTC)** — A cron job fetches the complete weekly news feed from Fair Economy, filters for today and tomorrow, computes helper fields (pre-release times, sent flags), and stores in KV under `cached_news:YYYY-MM-DD`
-2. **Incremental Fetch (every 15 min)** — Fetches from source and merges new/updated events into today's and tomorrow's cache. Updates `actual` values as they become available.
-3. **Scheduled Jobs (every 5 min)** — Reads **only from cache**:
-   - Pre-release alerts (5 min before events)
-   - Scheduled news delivery per group settings
-   - Post-release checks (1 min after event time) - logs actual values from cache
-4. **User Commands** (`/news today`, `/news tomorrow`) — Read directly from cache
-5. **Cache TTL** — Daily cache expires after 48 hours; metadata after 7 days. Old entries auto-cleaned on daily fetch.
-
-This architecture eliminates redundant API calls, reduces Cloudflare Workers load, and provides resilience if the external API is temporarily unavailable.
 
 ---
 

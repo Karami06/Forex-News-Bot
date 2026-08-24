@@ -1,6 +1,6 @@
 import { TIMEZONES, DEFAULT_TZ, SESSIONS } from "./config.js";
 
-export { TIMEZONES, DEFAULT_TZ };
+export { TIMEZONES, DEFAULT_TZ, SESSIONS };
 
 export function nowInTz(tzId) {
   const tz = TIMEZONES.find(t => t.id === tzId) || TIMEZONES.find(t => t.id === DEFAULT_TZ);

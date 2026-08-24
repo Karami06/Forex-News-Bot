@@ -5,7 +5,6 @@ import { sendAlerts } from "./alerts.js";
 import { sendPostNews } from "./post-news.js";
 import { sendSessionAlerts } from "./session-alerts.js";
 import { sendDailyRecap } from "./daily-recap.js";
-import { handleDailyFullFetch, handleIncrementalFetch } from "./incremental.js";
 import { getGroups, getCfg } from "./storage.js";
 import { fetchNews, filterNews, fmtNews, getEventTimeInTz } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, minsSinceMidnight, timeToMin, nowInTz } from "./calendar.js";
@@ -63,6 +62,8 @@ export default {
     }
 
 
+
+
     if (url.pathname === "/tick") {
       await sendScheduled(env);
       return new Response("OK");
@@ -70,27 +71,12 @@ export default {
     return new Response("Forex News Bot running");
   },
   async scheduled(event, env) {
-    console.log(`[CRON] Fired at ${new Date().toISOString()} - cron: ${event.cron}`);
-    
-    // Handle different cron schedules
-    if (event.cron === "0 0 * * *") {
-      // Daily full fetch at 00:00 UTC
-      console.log("[CRON] Running daily full fetch");
-      await handleDailyFullFetch(env);
-    } else if (event.cron === "*/15 * * * *") {
-      // Incremental fetch every 15 minutes
-      console.log("[CRON] Running incremental fetch");
-      await handleIncrementalFetch(env);
-    } else if (event.cron === "*/5 * * * *") {
-      // Regular scheduled jobs every 5 minutes
-      console.log("[CRON] Running scheduled jobs");
-      await sendScheduled(env);
-      await sendAlerts(env);
-      await sendPostNews(env);
-      await sendSessionAlerts(env);
-      await sendDailyRecap(env);
-    }
-    
+    console.log(`[CRON] Fired at ${new Date().toISOString()}`);
+    await sendScheduled(env);
+    await sendAlerts(env);
+    await sendPostNews(env);
+    await sendSessionAlerts(env);
+    await sendDailyRecap(env);
     console.log(`[CRON] Complete`);
   },
 };

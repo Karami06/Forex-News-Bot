@@ -1,6 +1,5 @@
 import { getGroups, getCfg } from "./storage.js";
-import { nowInTz, TIMEZONES } from "./calendar.js";
-import { SESSIONS } from "./config.js";
+import { nowInTz, TIMEZONES, SESSIONS } from "./calendar.js";
 import { tgSendHTML } from "./telegram.js";
 import { t } from "./translations.js";
 

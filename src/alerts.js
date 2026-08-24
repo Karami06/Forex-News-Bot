@@ -1,5 +1,5 @@
 import { getGroups, getCfg } from "./storage.js";
-import { getCachedNews, filterNews, getEventTimeInTz } from "./news.js";
+import { fetchNews, filterNews, getEventTimeInTz } from "./news.js";
 import { nowInTz, todayInTz } from "./calendar.js";
 import { tgSendPlain } from "./telegram.js";
 import { TV_DEFAULT, tvLink } from "./config.js";
@@ -7,7 +7,7 @@ import { TV_DEFAULT, tvLink } from "./config.js";
 export async function sendAlerts(env) {
   const gs = await getGroups(env);
   if (!gs.length) return;
-  const news = await getCachedNews(env);
+  const news = await fetchNews(env);
   if (!news.length) return;
 
   for (const gid of gs) {
@@ -43,7 +43,7 @@ export async function sendAlerts(env) {
             const tvPair = TV_DEFAULT[item.c.toUpperCase()];
             const tvLinkStr = tvPair ? `\nTradingView: ${tvLink(tvPair)}` : "";
             const impactEmoji = item.i === "high" ? "\u{1F534}" : item.i === "medium" ? "\u{1F7E1}" : "\u{1F7E2}";
-            await tgSendPlain(env, gid, `${impactEmoji} PRE-RELEASE: ${item.c} | ${item.e}\nIn ${diff} min\nForecast: ${item.f || "\u{2013}"}  |  Previous: ${item.p || "\u{2013}"}${tvLinkStr}`);
+            await tgSendPlain(env, gid, `${impactEmoji} PRE-RELEASE: ${item.c} | ${item.e}\nIn ${diff} min\nForecast: ${item.f || "-"}  |  Previous: ${item.p || "-"}${tvLinkStr}`);
             await env.KV.put(cooldownKey, "1", { expirationTtl: 600 });
           }
         }
