@@ -1,7 +1,7 @@
 import { getGroups, getCfg, setCfg, addGroup, rmGroup } from "./storage.js";
 import { t } from "./translations.js";
 import { tgAnswer, tgEdit, tgSend, tgSendHTML, isAdmin } from "./telegram.js";
-import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb } from "./keyboards.js";
+import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb, compactKb } from "./keyboards.js";
 import { handleNews, handleWeeklyCalendar } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, nowInTz, getSessionsStatus, TIMEZONES } from "./calendar.js";
 import { DEFAULT_CURRENCIES } from "./config.js";
@@ -211,6 +211,17 @@ export async function handleCb(env, cb) {
     await tgAnswer(env, cbid, "");
     await setCfg(env, cid, "weekend", (!cfg.weekend).toString());
     return tgEdit(env, cid, mid, `\u{1F4C5} *${t(lang, "weekend_silence")}*`, weekendKb(!cfg.weekend, lang));
+  }
+
+  // Compact Mode toggle
+  if (data === "menu:compact") {
+    await tgAnswer(env, cbid, "");
+    return tgEdit(env, cid, mid, `\u{1F504} *${t(lang, "compact_mode")}*`, compactKb(cfg.compact === true, lang));
+  }
+  if (data === "toggle:compact") {
+    await tgAnswer(env, cbid, "");
+    await setCfg(env, cid, "compact", (!cfg.compact).toString());
+    return tgEdit(env, cid, mid, `\u{1F504} *${t(lang, "compact_mode")}*`, compactKb(!cfg.compact, lang));
   }
 
   // News preview

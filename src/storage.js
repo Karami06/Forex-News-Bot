@@ -47,7 +47,8 @@ export async function getCfg(env, gid) {
     post: true,
     auto: true,
     days: [],
-    weekend: true,  // Weekend Silence: true = silent on weekends
+    weekend: true,
+    compact: false,  // Compact mode: shorter messages without F/P/TradingView
   };
   try {
     for (const k of ["c", "cc", "i", "subs", "days"]) {
@@ -66,6 +67,8 @@ export async function getCfg(env, gid) {
     if (autoVal !== null) c.auto = autoVal === "true";
     const weekendVal = await env.KV.get(`g:${gid}:weekend`);
     if (weekendVal !== null) c.weekend = weekendVal === "true";
+    const compactVal = await env.KV.get(`g:${gid}:compact`);
+    if (compactVal !== null) c.compact = compactVal === "true";
   } catch {}
   return c;
 }
