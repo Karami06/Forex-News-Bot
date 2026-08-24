@@ -1,7 +1,7 @@
 import { getGroups, getCfg, setCfg, addGroup, rmGroup } from "./storage.js";
 import { t } from "./translations.js";
 import { tgAnswer, tgEdit, tgSend, tgSendHTML, isAdmin } from "./telegram.js";
-import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn } from "./keyboards.js";
+import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb } from "./keyboards.js";
 import { handleNews, handleWeeklyCalendar } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, nowInTz, getSessionsStatus, TIMEZONES } from "./calendar.js";
 import { DEFAULT_CURRENCIES } from "./config.js";
@@ -200,6 +200,17 @@ export async function handleCb(env, cb) {
     let newDays = code === "reset" ? [] : (current.includes(code) ? current.filter(x => x !== code) : [...current, code]);
     await setCfg(env, cid, "days", newDays);
     return tgEdit(env, cid, mid, `\u{1F4C5} *${t(lang, "active_days")}*\n\n${t(lang, "active_days")}: ${newDays.join(", ") || "All days"}`, daysKb(newDays, lang));
+  }
+
+  // Weekend Silence toggle
+  if (data === "menu:weekend") {
+    await tgAnswer(env, cbid, "");
+    return tgEdit(env, cid, mid, `\u{1F4C5} *${t(lang, "weekend_silence")}*`, weekendKb(cfg.weekend !== false, lang));
+  }
+  if (data === "toggle:weekend") {
+    await tgAnswer(env, cbid, "");
+    await setCfg(env, cid, "weekend", (!cfg.weekend).toString());
+    return tgEdit(env, cid, mid, `\u{1F4C5} *${t(lang, "weekend_silence")}*`, weekendKb(!cfg.weekend, lang));
   }
 
   // News preview
