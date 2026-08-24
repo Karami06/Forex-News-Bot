@@ -211,6 +211,10 @@ When contributing to this project:
 | `/sessions` | View market sessions |
 | `/news today` | Preview today's news |
 | `/news tomorrow` | Preview tomorrow's news |
+| `/news weekly` | Preview this week's calendar |
+| `/forcesend` | Force refresh news from source |
+| `/export` | Export settings as base64 code |
+| `/import <code>` | Import settings from export code |
 | `/help` | Show all commands |
 
 ### Settings Panel
@@ -225,6 +229,10 @@ Access via `/settings` or the Settings button:
 - **Language** — Switch between 7 languages
 - **Custom Events** — Subscribe to specific events (NFP, CPI, GDP, etc.)
 - **Pre-Release Alerts** — Toggle 5-minute advance notifications
+- **Session Alerts** — Toggle per-session open/close notifications
+- **Daily Recap** — Enable end-of-day summary with stats
+- **Compact Mode** — Enable shorter messages without F/P/TV details
+- **Weekend Silence** — Enable silent mode on Sat/Sun
 
 ### Default Configuration
 
@@ -243,7 +251,7 @@ Access via `/settings` or the Settings button:
 
 1. **Scheduled Delivery** — A Cloudflare cron job runs every 5 minutes, checks each registered group's scheduled time, and sends the matching news
 2. **Pre-Release Alerts** — The same cron checks for upcoming high-impact events and sends advance warnings
-3. **News Data** — Fetched from Fair Economy's weekly JSON feed, cached in Cloudflare KV for 24 hours
+3. **News Data** — Fetched from Fair Economy's weekly JSON feed on each cron run
 4. **Per-Group Storage** — Each group's configuration is stored separately in Cloudflare KV
 
 ---
@@ -253,26 +261,28 @@ Access via `/settings` or the Settings button:
 ```
 forex-news-bot/
 ├── src/
-│   ├── index.js          # Bot entry point
-│   ├── telegram.js       # Telegram Bot API wrapper
-│   ├── storage.js        # Cloudflare KV storage layer
-│   ├── news-core.js      # News fetching and processing core
-│   ├── news.js           # News formatting and delivery
-│   ├── alerts.js         # Pre-release alert system
-│   ├── callbacks.js      # Callback query handlers
-│   ├── auto-send.js      # Automatic news scheduling
-│   ├── post-news.js      # Manual news posting
-│   ├── commands.js       # Command handlers (/start, /settings, etc.)
-│   ├── keyboards.js      # Inline keyboard builders
-│   ├── calendar.js       # Market session calculations
-│   └── translations.js   # Multi-language support
-├── wrangler.toml         # Cloudflare Workers configuration
-├── wrangler.toml.example # Template for public repositories
-├── setup.js              # Interactive installer for easy deployment
-├── package.json          # Node.js dependencies
-├── .gitignore            # Git ignore rules
-├── README.md             # This file
-└── LICENSE               # MIT License
+│   ├── index.js              # Bot entry point
+│   ├── telegram.js           # Telegram Bot API wrapper
+│   ├── storage.js            # Cloudflare KV storage layer
+│   ├── news-core.js          # News fetching and processing core
+│   ├── news.js               # News formatting and delivery
+│   ├── alerts.js             # Pre-release alert system
+│   ├── callbacks.js          # Callback query handlers
+│   ├── auto-send.js          # Automatic news scheduling
+│   ├── post-news.js          # Manual news posting
+│   ├── commands.js           # Command handlers (/start, /settings, etc.)
+│   ├── keyboards.js          # Inline keyboard builders
+│   ├── calendar.js           # Market session calculations
+│   ├── session-alerts.js     # Market session open/close alerts
+│   ├── daily-recap.js        # End-of-day summary with stats
+│   └── translations.js       # Multi-language support (7 languages)
+├── wrangler.toml             # Cloudflare Workers configuration
+├── wrangler.toml.example     # Template for public repositories
+├── setup.js                  # Interactive installer for easy deployment
+├── package.json              # Node.js dependencies
+├── .gitignore                # Git ignore rules
+├── README.md                 # This file
+└── LICENSE                   # MIT License
 ```
 
 ---
