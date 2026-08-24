@@ -4,11 +4,11 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "c3041fda4b3b4a86aed10a21594f7e4f"
+id = "YOUR_KV_NAMESPACE_ID"
 
 [triggers]
 crons = ["*/5 * * * *"]
 
 [vars]
-TELEGRAM_BOT_TOKEN = "8771589039:AAHJZNLXHEbzQ6lb3DaYjE4PfKvAPwH5HtA"
-ADMIN_USER_IDS = ""
+TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN"
+ADMIN_USER_IDS = "YOUR_ADMIN_USER_ID"

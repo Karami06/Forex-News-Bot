@@ -1,0 +1,15 @@
+# Cloudflare
+wrangler.toml
+.wrangler/
+
+# Dependencies
+node_modules/
+
+# Secrets & Credentials
+Info.txt
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,6 +1,6 @@
 # Forex News Bot
 
-A professional Telegram bot that delivers economic news from Forex Factory to trading groups and individual users, powered by Cloudflare Workers.
+A professional Telegram bot that delivers economic news from Fair Economy to trading groups and individual users, powered by Cloudflare Workers.
 
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange)
 ![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4)
@@ -29,7 +29,7 @@ A professional Telegram bot that delivers economic news from Forex Factory to tr
 | Cloudflare Workers | Serverless runtime (free tier) |
 | Cloudflare KV | Persistent configuration storage |
 | Telegram Bot API | Messaging platform |
-| Forex Factory | Economic news data source |
+| Fair Economy | Economic news data source |
 
 ---
 
@@ -42,6 +42,25 @@ A professional Telegram bot that delivers economic news from Forex Factory to tr
 ---
 
 ## Quick Start
+
+### Option 1: Automated Setup (Recommended)
+For the easiest deployment, use the interactive setup script:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/forex-news-bot.git
+cd forex-news-bot
+node setup.js
+```
+
+The setup script will guide you through:
+- Creating your Telegram bot with @BotFather
+- Getting your admin user ID from @userinfobot
+- Setting up Cloudflare Workers and KV namespace
+- Deploying the worker
+- Configuring the Telegram webhook
+- Preparing the repository for GitHub (sanitizing sensitive data)
+
+### Option 2: Manual Setup
 
 ### 1. Clone the repository
 
@@ -71,7 +90,9 @@ npm install
 
 ### 5. Configure the bot
 
-Edit `wrangler.toml` with your credentials:
+You have two options:
+- **Use the example template**: Copy `wrangler.toml.example` to `wrangler.toml` and fill in your values
+- **Edit directly**: Modify `wrangler.toml` with your credentials
 
 ```toml
 [[kv_namespaces]]
@@ -106,8 +127,34 @@ curl "https://api.telegram.org/botYOUR_TOKEN/setWebhook?url=https://YOUR_WORKER_
 3. Use the inline buttons to configure settings
 
 ---
+## GitHub Preparation & Security
+
+This repository has been prepared for safe publication on GitHub with the following security measures:
+
+### 🔐 Security Features
+- **Automatic Credential Sanitization**: The `setup.js` script automatically replaces sensitive values in `wrangler.toml` with placeholders
+- **GitHub-Ready Template**: `wrangler.toml.example` provides a safe template for public repositories
+- **Automatic `.gitignore`**: Sensitive files like `wrangler.toml`, `.env`, and `Info.txt` are automatically excluded from Git
+- **Secure Setup Process**: Credentials are collected interactively and never stored in plain text in the repository
+
+### 📁 Files Excluded from Git
+Check `.gitignore` for the complete list, which includes:
+- `wrangler.toml` (contains your actual credentials)
+- `.wrangler/` (Cloudflare Workers cache and state)
+- `node_modules/` (Node.js dependencies)
+- `Info.txt` and any `.env*` files (environment variables and secrets)
+
+### 🔄 Contributing Safely
+When contributing to this project:
+1. Never commit your actual `wrangler.toml` - use `wrangler.toml.example` as a reference
+2. Use the `setup.js` script to configure your local development environment
+3. Report any security issues responsibly
+
+---
 
 ## Configuration
+
+---
 
 ### Bot Commands
 
@@ -150,7 +197,7 @@ Access via `/settings` or the Settings button:
 
 1. **Scheduled Delivery** — A Cloudflare cron job runs every 5 minutes, checks each registered group's scheduled time, and sends the matching news
 2. **Pre-Release Alerts** — The same cron checks for upcoming high-impact events and sends advance warnings
-3. **News Data** — Fetched from Forex Factory's weekly JSON feed, cached in Cloudflare KV for 24 hours
+3. **News Data** — Fetched from Fair Economy's weekly JSON feed, cached in Cloudflare KV for 24 hours
 4. **Per-Group Storage** — Each group's configuration is stored separately in Cloudflare KV
 
 ---
@@ -160,11 +207,26 @@ Access via `/settings` or the Settings button:
 ```
 forex-news-bot/
 ├── src/
-│   └── index.js          # Main bot code (single file)
+│   ├── index.js          # Bot entry point
+│   ├── telegram.js       # Telegram Bot API wrapper
+│   ├── storage.js        # Cloudflare KV storage layer
+│   ├── news-core.js      # News fetching and processing core
+│   ├── news.js           # News formatting and delivery
+│   ├── alerts.js         # Pre-release alert system
+│   ├── callbacks.js      # Callback query handlers
+│   ├── auto-send.js      # Automatic news scheduling
+│   ├── post-news.js      # Manual news posting
+│   ├── commands.js       # Command handlers (/start, /settings, etc.)
+│   ├── keyboards.js      # Inline keyboard builders
+│   ├── calendar.js       # Market session calculations
+│   └── translations.js   # Multi-language support
 ├── wrangler.toml         # Cloudflare Workers configuration
+├── wrangler.toml.example # Template for public repositories
+├── setup.js              # Interactive installer for easy deployment
 ├── package.json          # Node.js dependencies
 ├── .gitignore            # Git ignore rules
-└── README.md             # This file
+├── README.md             # This file
+└── LICENSE               # MIT License
 ```
 
 ---
@@ -199,7 +261,7 @@ This bot runs entirely on free tiers:
 | Cloudflare Workers | 100,000 requests/day |
 | Cloudflare KV | 100,000 reads/day, 1,000 writes/day |
 | Telegram Bot API | Unlimited (rate limited) |
-| Forex Factory | Free (public JSON feed) |
+| Fair Economy | Free (public JSON feed) |
 
 **Total: $0/month** for typical usage.
 
@@ -223,6 +285,6 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
-- [Forex Factory](https://www.forexfactory.com/) for the economic calendar data
+- [Fair Economy](https://nfs.faireconomy.media/) for the economic calendar data
 - [Cloudflare](https://www.cloudflare.com/) for the serverless platform
 - [Telegram](https://telegram.org/) for the Bot API
