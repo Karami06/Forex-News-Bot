@@ -30,6 +30,7 @@ export function settingsKb(lang) {
     [btn(`\u{1F4C5} ${t(lang, "weekend_silence")}`, "menu:weekend")],
     [btn(`\u{1F504} ${t(lang, "compact_mode")}`, "menu:compact")],
     [btn(`\u{1F30D} ${t(lang, "sessions")}`, "menu:session_alerts")],
+    [btn(`\u{1F4CC} ${t(lang, "daily_recap")}`, "menu:dailyrecap")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:main")],
   ]);
 }
@@ -171,6 +172,13 @@ export function weekendKb(val, lang) {
 export function compactKb(val, lang) {
   return kb([
     [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "compact_on") : t(lang, "compact_off")}`, "toggle:compact")],
+    [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
+  ]);
+}
+
+export function dailyRecapKb(val, lang) {
+  return kb([
+    [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "daily_recap_on") : t(lang, "daily_recap_off")}`, "toggle:dailyrecap")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
   ]);
 }

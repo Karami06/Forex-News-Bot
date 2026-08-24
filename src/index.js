@@ -4,6 +4,7 @@ import { sendScheduled } from "./auto-send.js";
 import { sendAlerts } from "./alerts.js";
 import { sendPostNews } from "./post-news.js";
 import { sendSessionAlerts } from "./session-alerts.js";
+import { sendDailyRecap } from "./daily-recap.js";
 import { getGroups, getCfg } from "./storage.js";
 import { fetchNews, filterNews, fmtNews, getEventTimeInTz } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, minsSinceMidnight, timeToMin, nowInTz } from "./calendar.js";
@@ -75,6 +76,7 @@ export default {
     await sendAlerts(env);
     await sendPostNews(env);
     await sendSessionAlerts(env);
+    await sendDailyRecap(env);
     console.log(`[CRON] Complete`);
   },
 };

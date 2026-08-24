@@ -49,7 +49,8 @@ export async function getCfg(env, gid) {
     days: [],
     weekend: true,
     compact: false,
-    sessionAlerts: { open: [], close: [] },  // Session alerts: which sessions to alert for open/close
+    sessionAlerts: { open: [], close: [] },
+    dailyRecap: false,  // Daily recap at end of day
   };
   try {
     for (const k of ["c", "cc", "i", "subs", "days"]) {
@@ -72,6 +73,8 @@ export async function getCfg(env, gid) {
     if (compactVal !== null) c.compact = compactVal === "true";
     const sessionAlertsVal = await env.KV.get(`g:${gid}:sessionAlerts`);
     if (sessionAlertsVal !== null) c.sessionAlerts = JSON.parse(sessionAlertsVal);
+    const dailyRecapVal = await env.KV.get(`g:${gid}:dailyRecap`);
+    if (dailyRecapVal !== null) c.dailyRecap = dailyRecapVal === "true";
   } catch {}
   return c;
 }
