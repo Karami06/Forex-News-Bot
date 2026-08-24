@@ -28,6 +28,7 @@ export function settingsKb(lang) {
     [btn(`\u{1F4CA} ${t(lang, "post_release")}`, "menu:post")],
     [btn(`\u{1F504} ${t(lang, "auto_send")}`, "menu:auto")],
     [btn(`\u{1F4C5} ${t(lang, "weekend_silence")}`, "menu:weekend")],
+    [btn(`\u{1F504} ${t(lang, "compact_mode")}`, "menu:compact")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:main")],
   ]);
 }
@@ -162,6 +163,13 @@ export function daysKb(active, lang) {
 export function weekendKb(val, lang) {
   return kb([
     [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "weekend_on") : t(lang, "weekend_off")}`, "toggle:weekend")],
+    [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
+  ]);
+}
+
+export function compactKb(val, lang) {
+  return kb([
+    [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "compact_on") : t(lang, "compact_off")}`, "toggle:compact")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
   ]);
 }
