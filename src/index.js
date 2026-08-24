@@ -4,7 +4,7 @@ import { sendScheduled } from "./auto-send.js";
 import { sendAlerts } from "./alerts.js";
 import { sendPostNews } from "./post-news.js";
 import { sendSessionAlerts } from "./session-alerts.js";
-import { sendDailyRecap } from "./daily-recap.js";
+import { sendDailyRecap, sendMorningPreview } from "./daily-recap.js";
 import { getGroups, getCfg } from "./storage.js";
 import { fetchNews, filterNews, fmtNews, getEventTimeInTz } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, minsSinceMidnight, timeToMin, nowInTz } from "./calendar.js";
@@ -71,12 +71,13 @@ export default {
     return new Response("Forex News Bot running");
   },
   async scheduled(event, env) {
-    console.log(`[CRON] Fired at ${new Date().toISOString()}`);
-    await sendScheduled(env);
-    await sendAlerts(env);
-    await sendPostNews(env);
-    await sendSessionAlerts(env);
-    await sendDailyRecap(env);
-    console.log(`[CRON] Complete`);
-  },
+      console.log(`[CRON] Fired at ${new Date().toISOString()}`);
+      await sendScheduled(env);
+      await sendAlerts(env);
+      await sendPostNews(env);
+      await sendSessionAlerts(env);
+      await sendDailyRecap(env);
+      await sendMorningPreview(env);
+      console.log(`[CRON] Complete`);
+    },
 };
