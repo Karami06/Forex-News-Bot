@@ -118,16 +118,18 @@ export function fmtNews(items, nt, cfg) {
   const tzNow = nowInTz(userTz);
   const currentMin = tzNow.h * 60 + tzNow.m;
   const todayDate = todayInTz(userTz);
+  const tomorrowDate = tomorrowInTz(userTz);
+  const displayDate = nt === "tomorrow" ? tomorrowDate : todayDate;
 
-  if (!items.length) return `\u{1F4E2} *${nt === "today" ? t(lang, "news_today") : t(lang, "news_tomorrow")}*\n\`\`\`\n${todayDate}\n\`\`\`\n${t(lang, "no_news")}`;
+  if (!items.length) return `\u{1F4E2} *${nt === "today" ? t(lang, "news_today") : t(lang, "news_tomorrow")}*\n\`\`\`\n${displayDate}\n\`\`\`\n${t(lang, "no_news")}`;
 
   const hi = items.filter(i => i.i === "high");
   const md = items.filter(i => i.i === "medium");
   const lo = items.filter(i => i.i === "low");
 
   let msg = `\u{1F4E2} <b>${nt === "today" ? t(lang, "news_today") : t(lang, "news_tomorrow")}</b>\n`;
-  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
-  msg += `\u{1F4C5} ${todayDate}  |  \u{1F552} ${tz}\n\n`;
+  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
+  msg += `\u{1F4C5} ${displayDate}  |  \u{1F552} ${tz}\n\n`;
 
   const sections = [
     { label: "\u{1F534} High Impact", items: hi },
