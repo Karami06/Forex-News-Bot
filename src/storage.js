@@ -47,6 +47,7 @@ export async function getCfg(env, gid) {
     post: true,
     auto: true,
     days: [],
+    weekend: true,  // Weekend Silence: true = silent on weekends
   };
   try {
     for (const k of ["c", "cc", "i", "subs", "days"]) {
@@ -63,6 +64,8 @@ export async function getCfg(env, gid) {
     if (postVal !== null) c.post = postVal === "true";
     const autoVal = await env.KV.get(`g:${gid}:auto`);
     if (autoVal !== null) c.auto = autoVal === "true";
+    const weekendVal = await env.KV.get(`g:${gid}:weekend`);
+    if (weekendVal !== null) c.weekend = weekendVal === "true";
   } catch {}
   return c;
 }

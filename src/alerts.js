@@ -16,6 +16,12 @@ export async function sendAlerts(env) {
       if (!cfg.pre) continue;
       const userTz = cfg.tz || "Asia/Tehran";
       const tzNow = nowInTz(userTz);
+      // Weekend Silence
+      if (cfg.weekend !== false) {
+        const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+        const todayName = dayNames[tzNow.getUTCDay()];
+        if (todayName === "sat" || todayName === "sun") continue;
+      }
       const currentMin = tzNow.h * 60 + tzNow.m;
       const todayDate = todayInTz(userTz);
       const filtered = filterNews(news, cfg.c, cfg.i, cfg.cc);

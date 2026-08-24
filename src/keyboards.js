@@ -27,6 +27,7 @@ export function settingsKb(lang) {
     [btn(`\u{23F0} ${t(lang, "pre_alerts")}`, "menu:pre")],
     [btn(`\u{1F4CA} ${t(lang, "post_release")}`, "menu:post")],
     [btn(`\u{1F504} ${t(lang, "auto_send")}`, "menu:auto")],
+    [btn(`\u{1F4C5} ${t(lang, "weekend_silence")}`, "menu:weekend")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:main")],
   ]);
 }
@@ -156,4 +157,11 @@ export function daysKb(active, lang) {
   const rows = days.map(([code, label]) => [btn(`${active.includes(code) ? "\u2705" : "\u274C"} ${label}`, `day:${code}`)]);
   rows.push([btn("\u{1F504} Reset", "day:reset"), btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")]);
   return kb(rows);
+}
+
+export function weekendKb(val, lang) {
+  return kb([
+    [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "weekend_on") : t(lang, "weekend_off")}`, "toggle:weekend")],
+    [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
+  ]);
 }

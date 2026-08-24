@@ -23,6 +23,12 @@ export async function sendScheduled(env) {
         const todayName = dayNames[new Date().getUTCDay()];
         if (!cfg.days.includes(todayName)) continue;
       }
+      // Weekend Silence: skip if enabled and today is weekend (Sat/Sun) in user's timezone
+      if (cfg.weekend !== false) {
+        const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+        const todayName = dayNames[tzNow.getUTCDay()];
+        if (todayName === "sat" || todayName === "sun") continue;
+      }
       for (const nt of ["today", "tomorrow"]) {
         const targetMin = timeToMin(nt === "today" ? cfg.tt : cfg.tm);
         const diff = (currentMin - targetMin + 1440) % 1440;
