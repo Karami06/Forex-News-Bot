@@ -5,6 +5,47 @@ A professional Telegram bot that delivers economic news from Fair Economy to tra
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange)
 ![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+
+---
+
+## 🚀 Release v2.0.0 — "Smart Scheduler"
+
+**Major release with smart scheduling, multi-language support, session alerts, and comprehensive settings panel.**
+
+### ✨ New Features
+
+| Feature | Description |
+|---------|-------------|
+| **🌍 Multi-Language Support** | 7 languages: English, Persian (فارسی), Arabic (العربية), Russian (Русский), Spanish (Español), Chinese (中文), Japanese (日本語) |
+| **⚙️ Interactive Settings Panel** | Full inline keyboard configuration — no commands needed |
+| **📅 Market Sessions** | Real-time view of Sydney, Tokyo, London, New York sessions with local times |
+| **🔔 Session Alerts** | Per-session open/close notifications with timezone conversion |
+| **📊 Daily Recap** | End-of-day summary with stats, beat/miss analysis, top movers |
+| **📦 Compact Mode** | Shorter messages without F/P/TV details — per-group toggle |
+| **🌙 Weekend Silence** | Silent on Sat/Sun with per-group toggle |
+| **📤 Export/Import Settings** | Base64-encoded config backup/restore via `/export` `/import` |
+| **⚡ Smart Highlight** | Auto-detects key events (NFP, CPI, FOMC, GDP, etc.) with ⚡⚡ badges |
+| **🔒 Security Hardening** | Credential sanitization, GitHub-ready templates, secure setup |
+
+### 🐛 Bug Fixes
+
+| Issue | Fix |
+|-------|-----|
+| `tomorrowInTz` logic | Fixed date calculation for tomorrow across timezones |
+| `filterNews` empty array | Handles empty currency codes correctly |
+| `rmGroup` cleanup | Properly removes all group keys on deletion |
+| Export/Import fields | All config fields now included in backup/restore |
+| Duplicate `dayNames` | Removed redundant declarations |
+| Tomorrow news date display | Fixed showing today's date for tomorrow news |
+
+### 🔧 Improvements
+
+- **Timezone-aware filtering** — All news filtering now respects group timezone
+- **Strikethrough for released events** — Past events shown with strikethrough in weekly view
+- **Per-group deduplication** — Minute-based dedup for pre-release + scheduled sends
+- **Credential sanitization** — `setup.js` auto-replaces secrets in `wrangler.toml`
+- **GitHub-ready** — `wrangler.toml.example` template, auto `.gitignore`
 
 ---
 
@@ -44,6 +85,7 @@ A professional Telegram bot that delivers economic news from Fair Economy to tra
 ## Quick Start
 
 ### Option 1: Automated Setup (Recommended)
+
 For the easiest deployment, use the interactive setup script:
 
 ```bash
@@ -127,17 +169,20 @@ curl "https://api.telegram.org/botYOUR_TOKEN/setWebhook?url=https://YOUR_WORKER_
 3. Use the inline buttons to configure settings
 
 ---
+
 ## GitHub Preparation & Security
 
 This repository has been prepared for safe publication on GitHub with the following security measures:
 
 ### 🔐 Security Features
+
 - **Automatic Credential Sanitization**: The `setup.js` script automatically replaces sensitive values in `wrangler.toml` with placeholders
 - **GitHub-Ready Template**: `wrangler.toml.example` provides a safe template for public repositories
 - **Automatic `.gitignore`**: Sensitive files like `wrangler.toml`, `.env`, and `Info.txt` are automatically excluded from Git
 - **Secure Setup Process**: Credentials are collected interactively and never stored in plain text in the repository
 
 ### 📁 Files Excluded from Git
+
 Check `.gitignore` for the complete list, which includes:
 - `wrangler.toml` (contains your actual credentials)
 - `.wrangler/` (Cloudflare Workers cache and state)
@@ -145,6 +190,7 @@ Check `.gitignore` for the complete list, which includes:
 - `Info.txt` and any `.env*` files (environment variables and secrets)
 
 ### 🔄 Contributing Safely
+
 When contributing to this project:
 1. Never commit your actual `wrangler.toml` - use `wrangler.toml.example` as a reference
 2. Use the `setup.js` script to configure your local development environment
@@ -234,19 +280,23 @@ forex-news-bot/
 ## Troubleshooting
 
 ### Bot not responding to messages
+
 - Verify webhook is set: `curl "https://api.telegram.org/botYOUR_TOKEN/getWebhookInfo"`
 - Check that `TELEGRAM_BOT_TOKEN` is set in `wrangler.toml`
 - Ensure the Worker is deployed: `npm run deploy`
 
 ### Automatic messages not sending
+
 - Make sure you've sent `/start` to register
 - Check your scheduled time in Settings
 - Verify your timezone is set correctly
 
 ### Duplicate messages
+
 - The bot uses minute-based deduplication — this is normal behavior if you see the same news at different times (pre-release alert + scheduled send)
 
 ### News not appearing
+
 - The bot uses a cached feed — run `/refresh` to update
 - Check that your currency and impact filters include the news you want
 
@@ -288,5 +338,3 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 - [Fair Economy](https://nfs.faireconomy.media/) for the economic calendar data
 - [Cloudflare](https://www.cloudflare.com/) for the serverless platform
 - [Telegram](https://telegram.org/) for the Bot API
-
-# Test change
