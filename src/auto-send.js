@@ -1,13 +1,12 @@
 import { getGroups, getCfg } from "./storage.js";
-import { fetchNews, refreshNews, filterNews, fmtNews, getEventTimeInTz } from "./news.js";
+import { getCachedNews, filterNews, fmtNews, getEventTimeInTz } from "./news.js";
 import { todayInTz, tomorrowInTz, nowInTz, timeToMin } from "./calendar.js";
 import { tgSendHTML } from "./telegram.js";
 
 export async function sendScheduled(env) {
   const gs = await getGroups(env);
   console.log(`[SCHEDULED] ${gs.length} registered`);
-  let news = await fetchNews(env);
-  if (!news.length) news = await refreshNews(env);
+  let news = await getCachedNews(env);
   if (!news.length) return;
   for (const gid of gs) {
     try {
@@ -18,9 +17,9 @@ export async function sendScheduled(env) {
       const currentMin = tzNow.h * 60 + tzNow.m;
       const todayDate = todayInTz(userTz);
       const tomorrowDate = tomorrowInTz(userTz);
-      
+     
       const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-      
+     
       if (cfg.days && cfg.days.length > 0) {
         const todayName = dayNames[new Date().getUTCDay()];
         if (!cfg.days.includes(todayName)) continue;

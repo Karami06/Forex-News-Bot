@@ -2,6 +2,7 @@ import { CURRENCY_MAP } from "./config.js";
 import { TIMEZONES, DEFAULT_TZ, TV_DEFAULT, tvLink, KEY_EVENTS } from "./config.js";
 import { nowInTz, todayInTz, tomorrowInTz, weekInTz, formatDayHeader } from "./calendar.js";
 import { t } from "./translations.js";
+import { getDailyCache, setDailyCache, getMeta, setMeta, mergeIncremental, deleteOldCache, buildDailyCache } from "./cache.js";
 
 export const NEWS_URLS = [
   "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
@@ -40,25 +41,10 @@ export function getEventTimeInTz(item, tzId) {
   };
 }
 
-export async function fetchNews(env) {
-  if (env) {
-    const cached = await env.KV.get("news:cache");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed.items && parsed.items.length > 0 && (Date.now() - parsed.ts) < 86400000) {
-          if (parsed.items[0]._utcMs !== undefined) {
-            console.log(`[NEWS] Cache hit: ${parsed.items.length} items`);
-            return parsed.items;
-          }
-          console.log("[NEWS] Old cache format, deleting stale cache");
-          await env.KV.delete("news:cache");
-        }
-      } catch (e) { console.log("[NEWS] Cache parse error:", e?.message); }
-    } else {
-      console.log("[NEWS] No cache, fetching from API");
-    }
-  }
+/**
+ * Fetch from external API (Fair Economy) - internal function
+ */
+async function fetchFromSource() {
   for (const url of NEWS_URLS) {
     try {
       const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -67,7 +53,6 @@ export async function fetchNews(env) {
       const items = parseNewsItems(data);
       console.log(`[NEWS] API ${url} returned ${items.length} items`);
       if (items.length > 0) {
-        if (env) await env.KV.put("news:cache", JSON.stringify({ ts: Date.now(), items }), { expirationTtl: 86400 });
         return items;
       }
     } catch (e) { console.log(`[NEWS] API ${url} error:`, e?.message); }
@@ -76,35 +61,182 @@ export async function fetchNews(env) {
   return [];
 }
 
-export async function refreshNews(env) {
-  // Fetch fresh data first, only overwrite cache on success
-  for (const url of NEWS_URLS) {
-    try {
-      const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-      if (!r.ok) continue;
-      const data = await r.json();
-      const items = parseNewsItems(data);
-      if (items.length > 0) {
-        if (env) await env.KV.put("news:cache", JSON.stringify({ ts: Date.now(), items }), { expirationTtl: 86400 });
-        return items;
-      }
-    } catch (e) { console.log(`[NEWS] Refresh API error:`, e?.message); }
+/**
+ * Full daily fetch - runs at 00:00 UTC
+ * Fetches from source and populates cache for today and tomorrow
+ */
+export async function fetchFullNews(env) {
+  console.log("[NEWS] Starting daily full fetch");
+  const rawItems = await fetchFromSource();
+  if (!rawItems.length) {
+    throw new Error("Full fetch returned no items");
   }
-  // If all sources failed, return existing cached data
-  return fetchNews(env);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  // Build cache for today
+  const todayCache = buildDailyCache(rawItems, today);
+  todayCache.events.forEach(e => e.source = 'full');
+  await setDailyCache(env, today, todayCache);
+
+  // Build cache for tomorrow
+  const tomorrowCache = buildDailyCache(rawItems, tomorrow);
+  tomorrowCache.events.forEach(e => e.source = 'full');
+  await setDailyCache(env, tomorrow, tomorrowCache);
+
+  // Update meta
+  await setMeta(env, {
+    lastFullFetch: Date.now(),
+    lastIncrementalFetch: null,
+    consecutiveFailures: 0
+  });
+
+  // Clean old cache
+  await deleteOldCache(env);
+
+  console.log(`[NEWS] Full fetch complete: today=${todayCache.events.length}, tomorrow=${tomorrowCache.events.length}`);
+  return { today: todayCache.events, tomorrow: tomorrowCache.events };
+}
+
+/**
+ * Incremental fetch - runs every 15 minutes
+ * Fetches from source and merges into today/tomorrow cache
+ */
+export async function fetchIncrementalNews(env) {
+  console.log("[NEWS] Starting incremental fetch");
+  const rawItems = await fetchFromSource();
+  if (!rawItems.length) {
+    throw new Error("Incremental fetch returned no items");
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  // Filter raw items for today and tomorrow
+  const todayItems = rawItems.filter(item => {
+    const itemDate = new Date(item._rawDate || item._utcMs).toISOString().slice(0, 10);
+    return itemDate === today;
+  });
+  const tomorrowItems = rawItems.filter(item => {
+    const itemDate = new Date(item._rawDate || item._utcMs).toISOString().slice(0, 10);
+    return itemDate === tomorrow;
+  });
+
+  const todayResult = await mergeIncremental(env, today, todayItems);
+  const tomorrowResult = await mergeIncremental(env, tomorrow, tomorrowItems);
+
+  // Update meta
+  const meta = await getMeta(env) || { lastFullFetch: null, lastIncrementalFetch: null, consecutiveFailures: 0 };
+  meta.lastIncrementalFetch = Date.now();
+  await setMeta(env, meta);
+
+  console.log(`[NEWS] Incremental fetch complete: today +${todayResult.added}/~${todayResult.updated}/-${todayResult.removed}, tomorrow +${tomorrowResult.added}/~${tomorrowResult.updated}/-${tomorrowResult.removed}`);
+  return { today: todayResult, tomorrow: tomorrowResult };
+}
+
+/**
+ * Get news from cache - primary function for user-facing operations
+ * Falls back to full fetch if cache is empty (first run / after failure)
+ */
+export async function fetchNews(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  
+  // Try cache first
+  const cached = await getDailyCache(env, today);
+  if (cached?.events?.length) {
+    console.log(`[NEWS] Cache hit: ${cached.events.length} items for ${today}`);
+    // Convert cached format back to legacy format for compatibility
+    return cached.events.map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
+  }
+
+  console.log(`[NEWS] Cache miss for ${today}, attempting full fetch`);
+  // Fallback: try full fetch
+  try {
+    const result = await fetchFullNews(env);
+    return result.today.map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
+  } catch (e) {
+    console.log("[NEWS] Full fetch fallback failed:", e?.message);
+    return [];
+  }
+}
+
+/**
+ * Get cached news for a specific date (used by scheduled jobs)
+ * Returns cached events in the new format with all metadata
+ */
+export async function getCachedNews(env, dateStr) {
+  const cached = await getDailyCache(env, dateStr);
+  if (!cached?.events?.length) return [];
+  
+  // Convert to legacy format for compatibility with existing code
+  return cached.events.map(e => ({
+    _rawDate: e.date,
+    _utcMs: e.timestamp,
+    c: e.country,
+    e: e.title,
+    i: e.impact,
+    a: e.actual,
+    f: e.forecast,
+    p: e.previous,
+  }));
+}
+
+/**
+ * Check if cache module is ready (has data for today)
+ */
+export async function cacheModuleReady(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  const cached = await getDailyCache(env, today);
+  return !!(cached?.events?.length);
+}
+
+export async function refreshNews(env) {
+  // For backward compatibility: force refresh from source
+  console.log("[NEWS] Manual refresh triggered");
+  try {
+    const result = await fetchFullNews(env);
+    return result.today.map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
+  } catch (e) {
+    console.log("[NEWS] Refresh failed:", e?.message);
+    return fetchNews(env); // Return cached as fallback
+  }
 }
 
 export function filterNews(items, currencies, impacts, currencyCodes) {
   const codes = new Set();
-  // If user selected specific indexes (currencyCodes), use ONLY those
-  // An empty array means "no currencies selected" -> match nothing
   if (currencyCodes && currencyCodes.length > 0) {
     for (const cc of currencyCodes) codes.add(cc.toUpperCase());
   } else if (currencyCodes && currencyCodes.length === 0) {
     // Empty array explicitly means no currencies selected
-    // codes remains empty -> no items will match
   } else {
-    // Otherwise, derive codes from currency pairs
     for (const p of currencies) {
       const pu = p.toUpperCase();
       if (CURRENCY_MAP[pu]) codes.add(CURRENCY_MAP[pu]);
@@ -133,7 +265,7 @@ export function fmtNews(items, nt, cfg) {
   const lo = items.filter(i => i.i === "low");
 
   let msg = `\u{1F4E2} <b>${nt === "today" ? t(lang, "news_today") : t(lang, "news_tomorrow")}</b>\n`;
-  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
+  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
   msg += `\u{1F4C5} ${displayDate}  |  \u{1F552} ${tz}\n\n`;
 
   const sections = [
@@ -143,39 +275,38 @@ export function fmtNews(items, nt, cfg) {
   ];
 
   for (const sec of sections) {
-        if (!sec.items.length) continue;
-        msg += `<b>${sec.label}</b>\n`;
-        for (const item of sec.items) {
-          const evt = getEventTimeInTz(item, userTz);
-          const itemMin = parseInt(evt.t.split(":")[0]) * 60 + parseInt(evt.t.split(":")[1]);
-          const released = nt === "today" && itemMin <= currentMin;
-          const timeStr = released ? `${evt.t}   \u{1F534}` : evt.t;
-        
-          // Smart Highlight: check if title matches KEY_EVENTS
-          let highlight = "";
-          const titleUpper = item.e.toUpperCase();
-          for (const [keyword, info] of Object.entries(KEY_EVENTS)) {
-            if (titleUpper.includes(keyword.toUpperCase())) {
-              highlight = ` ⚡⚡ <i>${t(lang, info.reason)}</i>`;
-              break;
-            }
-          }
-        
-          msg += `\n\u{25B6} ${timeStr}  <b>${item.c}</b> | ${item.e}${highlight}\n`;
-          if (!isCompact) {
-            if (item.a && released) {
-              msg += `    \u{2705} <b>A: ${item.a}</b>  |  F: ${item.f || "-"}  |  P: ${item.p || "-"}\n`;
-            } else if (item.f || item.p) {
-              msg += `    \u{1F4CA} F: ${item.f || "-"}  |  P: ${item.p || "-"}\n`;
-            }
-            const tvPair = TV_DEFAULT[item.c.toUpperCase()];
-            if (tvPair) msg += `    \u{1F310} <a href="${tvLink(tvPair)}">${t(lang, "trading_view")}</a>\n`;
-          }
+    if (!sec.items.length) continue;
+    msg += `<b>${sec.label}</b>\n`;
+    for (const item of sec.items) {
+      const evt = getEventTimeInTz(item, userTz);
+      const itemMin = parseInt(evt.t.split(":")[0]) * 60 + parseInt(evt.t.split(":")[1]);
+      const released = nt === "today" && itemMin <= currentMin;
+      const timeStr = released ? `${evt.t}   \u{1F534}` : evt.t;
+
+      let highlight = "";
+      const titleUpper = item.e.toUpperCase();
+      for (const [keyword, info] of Object.entries(KEY_EVENTS)) {
+        if (titleUpper.includes(keyword.toUpperCase())) {
+          highlight = ` \u{26A1}\u{26A1} <i>${t(lang, info.reason)}</i>`;
+          break;
         }
-        msg += "\n";
       }
 
-  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
+      msg += `\n\u{25B6} ${timeStr}  <b>${item.c}</b> | ${item.e}${highlight}\n`;
+      if (!isCompact) {
+        if (item.a && released) {
+          msg += `    \u{2705} <b>A: ${item.a}</b>  |  F: ${item.f || "\u{2013}"}  |  P: ${item.p || "\u{2013}"}\n`;
+        } else if (item.f || item.p) {
+          msg += `    \u{1F4CA} F: ${item.f || "\u{2013}"}  |  P: ${item.p || "\u{2013}"}\n`;
+        }
+        const tvPair = TV_DEFAULT[item.c.toUpperCase()];
+        if (tvPair) msg += `    \u{1F310} <a href="${tvLink(tvPair)}">${t(lang, "trading_view")}</a>\n`;
+      }
+    }
+    msg += "\n";
+  }
+
+  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
   msg += `\u{2139}\u{FE0F} ${t(lang, "source")}  |  ${tz}`;
   return msg;
 }
@@ -195,7 +326,7 @@ export function fmtWeeklyCalendar(news, cfg) {
   });
 
   let msg = `\u{1F4C5} *${t(lang, "weekly_calendar")}*\n`;
-  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
+  msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
   msg += `${monday} \u{2014} ${sunday}  |  \u{1F552} ${tz}\n`;
 
   if (!weekItems.length) {
@@ -203,7 +334,6 @@ export function fmtWeeklyCalendar(news, cfg) {
     return msg;
   }
 
-  // Group by day
   const byDay = {};
   for (const item of weekItems) {
     const evt = getEventTimeInTz(item, userTz);

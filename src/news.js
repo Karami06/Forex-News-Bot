@@ -1,9 +1,9 @@
-import { fetchNews, filterNews, fmtNews, fmtWeeklyCalendar, refreshNews, getEventTimeInTz } from "./news-core.js";
+import { fetchNews, filterNews, fmtNews, fmtWeeklyCalendar, refreshNews, getEventTimeInTz, fetchFullNews, fetchIncrementalNews, getCachedNews, cacheModuleReady } from "./news-core.js";
 import { todayInTz, tomorrowInTz } from "./calendar.js";
 import { tgApi, tgSendHTML } from "./telegram.js";
 import { mainMenuKb, calendarKb } from "./keyboards.js";
 
-export { fetchNews, filterNews, fmtNews, fmtWeeklyCalendar, refreshNews, getEventTimeInTz };
+export { fetchNews, filterNews, fmtNews, fmtWeeklyCalendar, refreshNews, getEventTimeInTz, fetchFullNews, fetchIncrementalNews, getCachedNews, cacheModuleReady };
 
 export async function handleNews(env, cid, mid, nt, cfg, lang) {
   const userTz = cfg.tz || "Asia/Tehran";

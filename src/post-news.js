@@ -1,12 +1,12 @@
 import { getGroups, getCfg } from "./storage.js";
-import { fetchNews, refreshNews, filterNews, getEventTimeInTz } from "./news.js";
+import { getCachedNews, filterNews, getEventTimeInTz } from "./news.js";
 import { nowInTz, todayInTz } from "./calendar.js";
 import { tgSendHTML } from "./telegram.js";
 import { TV_DEFAULT, tvLink } from "./config.js";
 import { t } from "./translations.js";
 
 function parseNumeric(val) {
-  if (!val || val === "-" || val === "") return NaN;
+  if (!val || val === "\u{2013}" || val === "") return NaN;
   const cleaned = String(val).replace(/[^0-9.-]/g, "");
   const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? NaN : parsed;
@@ -16,8 +16,8 @@ export async function sendPostNews(env) {
   const gs = await getGroups(env);
   if (!gs.length) return;
 
-  // Always refresh to get updated actual values from API
-  const news = await refreshNews(env);
+  // Get fresh data from cache (which is updated by incremental fetch every 15 min)
+  const news = await getCachedNews(env);
   if (!news.length) return;
 
   for (const gid of gs) {
@@ -57,12 +57,12 @@ export async function sendPostNews(env) {
           const impactEmoji = item.i === "high" ? "\u{1F534}" : item.i === "medium" ? "\u{1F7E1}" : "\u{1F7E2}";
 
           let msg = `\u{1F4CA} <b>${t(lang, "post_release")}: ${item.c} | ${item.e}</b> ${impactEmoji}\n`;
-          msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
-          msg += `<b>${t(lang, "previous")}:</b> ${item.p || "-"}\n`;
-          msg += `<b>${t(lang, "forecast")}:</b> ${item.f || "-"}\n`;
+          msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
+          msg += `<b>${t(lang, "previous")}:</b> ${item.p || "\u{2013}"}\n`;
+          msg += `<b>${t(lang, "forecast")}:</b> ${item.f || "\u{2013}"}\n`;
           msg += `<b>${t(lang, "actual")}:</b> ${item.a}`;
 
-          if (item.f && item.f !== "-" && item.a !== "-") {
+          if (item.f && item.f !== "\u{2013}" && item.a !== "\u{2013}") {
             const f = parseNumeric(item.f);
             const a = parseNumeric(item.a);
             if (!isNaN(f) && !isNaN(a)) {
@@ -74,7 +74,7 @@ export async function sendPostNews(env) {
 
           msg += tvLinkStr;
           await tgSendHTML(env, gid, msg);
-          // Keep deduplication for 24 hours to avoid re‑sending after a restart or delayed data.
+          // Keep deduplication for 24 hours to avoid re-sending after a restart or delayed data.
           await env.KV.put(dedupKey, "1", { expirationTtl: 86400 });
         }
       }
