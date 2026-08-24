@@ -1,45 +1,45 @@
 /**
  * Cache module for Forex News Bot
- * Handles daily news caching in Cloudflare KV with prefix 'cached_news:'
+ * Handles weekly news caching in Cloudflare KV with prefix 'cached_news:'
  */
 
 const CACHE_PREFIX = 'cached_news:';
-const CACHE_TTL_DAILY = 48 * 60 * 60; // 48 hours in seconds
+const CACHE_TTL_WEEKLY = 7 * 24 * 60 * 60; // 7 days in seconds
 const CACHE_TTL_META = 7 * 24 * 60 * 60; // 7 days in seconds
 const MAX_INCREMENTAL_UPDATES = 50;
 
 /**
- * Get the daily cache for a specific date
+ * Get the weekly cache for a specific week (Monday-Sunday)
  * @param {Object} env - Cloudflare Workers environment with KV binding
- * @param {string} dateStr - Date in YYYY-MM-DD format (UTC)
- * @returns {Promise<Object|null>} DailyNewsCache object or null if not found
+ * @param {string} mondayStr - Monday date in YYYY-MM-DD format (UTC)
+ * @returns {Promise<Object|null>} WeeklyNewsCache object or null if not found
  */
-export async function getDailyCache(env, dateStr) {
+export async function getWeeklyCache(env, mondayStr) {
   try {
-    const key = `${CACHE_PREFIX}${dateStr}`;
+    const key = `${CACHE_PREFIX}week:${mondayStr}`;
     const cached = await env.KV.get(key);
     if (!cached) return null;
     return JSON.parse(cached);
   } catch (e) {
-    console.log(`[CACHE] Get error for ${dateStr}:`, e?.message);
+    console.log(`[CACHE] Get weekly error for ${mondayStr}:`, e?.message);
     return null;
   }
 }
 
 /**
- * Set the daily cache for a specific date
+ * Set the weekly cache for a specific week
  * @param {Object} env - Cloudflare Workers environment with KV binding
- * @param {string} dateStr - Date in YYYY-MM-DD format (UTC)
- * @param {Object} data - DailyNewsCache object
+ * @param {string} mondayStr - Monday date in YYYY-MM-DD format (UTC)
+ * @param {Object} data - WeeklyNewsCache object
  * @returns {Promise<void>}
  */
-export async function setDailyCache(env, dateStr, data) {
+export async function setWeeklyCache(env, mondayStr, data) {
   try {
-    const key = `${CACHE_PREFIX}${dateStr}`;
-    await env.KV.put(key, JSON.stringify(data), { expirationTtl: CACHE_TTL_DAILY });
-    console.log(`[CACHE] Stored ${data.events?.length || 0} events for ${dateStr}`);
+    const key = `${CACHE_PREFIX}week:${mondayStr}`;
+    await env.KV.put(key, JSON.stringify(data), { expirationTtl: CACHE_TTL_WEEKLY });
+    console.log(`[CACHE] Stored weekly cache for ${mondayStr}: ${data.events?.length || 0} events`);
   } catch (e) {
-    console.log(`[CACHE] Set error for ${dateStr}:`, e?.message);
+    console.log(`[CACHE] Set weekly error for ${mondayStr}:`, e?.message);
     throw e;
   }
 }
@@ -107,15 +107,15 @@ function toCachedEvent(item) {
 }
 
 /**
- * Merge incremental fetch results into existing cache
+ * Merge incremental fetch results into existing weekly cache
  * @param {Object} env - Cloudflare Workers environment with KV binding
- * @param {string} dateStr - Date in YYYY-MM-DD format (UTC)
+ * @param {string} mondayStr - Monday date in YYYY-MM-DD format (UTC)
  * @param {Array} freshItems - Array of raw items from Fair Economy API
  * @returns {Promise<Object>} Result with added/updated/removed counts
  */
-export async function mergeIncremental(env, dateStr, freshItems) {
-  const existing = await getDailyCache(env, dateStr) || {
-    date: dateStr,
+export async function mergeIncrementalWeekly(env, mondayStr, freshItems) {
+  const existing = await getWeeklyCache(env, mondayStr) || {
+    weekStart: mondayStr,
     fetchedAt: Date.now(),
     lastIncrementalAt: Date.now(),
     events: [],
@@ -170,20 +170,20 @@ export async function mergeIncremental(env, dateStr, freshItems) {
     ...existing.incrementalUpdates.slice(0, MAX_INCREMENTAL_UPDATES - 1)
   ];
 
-  await setDailyCache(env, dateStr, existing);
+  await setWeeklyCache(env, mondayStr, existing);
 
   return { added, updated, removed };
 }
 
 /**
- * Delete cache entries older than 2 days
+ * Delete cache entries older than 2 weeks
  * @param {Object} env - Cloudflare Workers environment with KV binding
  * @returns {Promise<void>}
  */
 export async function deleteOldCache(env) {
   try {
     const cutoff = new Date();
-    cutoff.setUTCDate(cutoff.getUTCDate() - 2);
+    cutoff.setUTCDate(cutoff.getUTCDate() - 14);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
 
     const list = await env.KV.list({ prefix: CACHE_PREFIX });
@@ -191,10 +191,14 @@ export async function deleteOldCache(env) {
       // Skip meta key
       if (key.name === `${CACHE_PREFIX}meta`) continue;
       
-      const dateStr = key.name.replace(CACHE_PREFIX, '');
-      if (dateStr < cutoffStr) {
-        await env.KV.delete(key.name);
-        console.log(`[CACHE] Deleted old cache: ${key.name}`);
+      // Extract date from key (cached_news:week:YYYY-MM-DD)
+      const match = key.name.match(/cached_news:week:(\d{4}-\d{2}-\d{2})/);
+      if (match) {
+        const weekStart = match[1];
+        if (weekStart < cutoffStr) {
+          await env.KV.delete(key.name);
+          console.log(`[CACHE] Deleted old weekly cache: ${key.name}`);
+        }
       }
     }
   } catch (e) {
@@ -203,24 +207,77 @@ export async function deleteOldCache(env) {
 }
 
 /**
- * Build DailyNewsCache object from raw Fair Economy data
+ * Build WeeklyNewsCache object from raw Fair Economy data
  * @param {Array} rawItems - Array of raw items from Fair Economy API
- * @param {string} dateStr - Date in YYYY-MM-DD format (UTC)
- * @returns {Object} DailyNewsCache object
+ * @param {string} mondayStr - Monday date in YYYY-MM-DD format (UTC)
+ * @returns {Object} WeeklyNewsCache object
  */
-export function buildDailyCache(rawItems, dateStr) {
+export function buildWeeklyCache(rawItems, mondayStr) {
   const now = Date.now();
-  // Filter items for the specific date
-  const dayItems = rawItems.filter(item => {
-    const itemDate = item.date || new Date(item.timestamp || item._utcMs || new Date(item.date).getTime()).toISOString().slice(0, 10);
-    return itemDate === dateStr;
+  const monday = new Date(mondayStr + 'T00:00:00Z');
+  const sunday = new Date(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  const sundayStr = sunday.toISOString().slice(0, 10);
+
+  // Filter items for the week (Monday to Sunday)
+  const weekItems = rawItems.filter(item => {
+    const itemDate = new Date(item._rawDate || item._utcMs || new Date(item.date).getTime()).toISOString().slice(0, 10);
+    return itemDate >= mondayStr && itemDate <= sundayStr;
   });
 
   return {
-    date: dateStr,
+    weekStart: mondayStr,
+    weekEnd: sundayStr,
     fetchedAt: now,
     lastIncrementalAt: now,
-    events: dayItems.map(toCachedEvent),
+    events: weekItems.map(toCachedEvent),
     incrementalUpdates: []
   };
+}
+
+/**
+ * Get events for a specific date from weekly cache
+ * @param {Object} weeklyCache - WeeklyNewsCache object
+ * @param {string} dateStr - Date in YYYY-MM-DD format (UTC)
+ * @returns {Array} Events for that date in legacy format
+ */
+export function getEventsForDate(weeklyCache, dateStr) {
+  if (!weeklyCache?.events?.length) return [];
+  
+  return weeklyCache.events
+    .filter(e => e.date === dateStr)
+    .map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
+}
+
+/**
+ * Get events for a date range from weekly cache
+ * @param {Object} weeklyCache - WeeklyNewsCache object
+ * @param {string} startStr - Start date in YYYY-MM-DD format
+ * @param {string} endStr - End date in YYYY-MM-DD format
+ * @returns {Array} Events in that range in legacy format
+ */
+export function getEventsForRange(weeklyCache, startStr, endStr) {
+  if (!weeklyCache?.events?.length) return [];
+  
+  return weeklyCache.events
+    .filter(e => e.date >= startStr && e.date <= endStr)
+    .map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
 }

@@ -18,17 +18,17 @@ export async function handleIncrementalFetch(env) {
 }
 
 /**
- * Full daily fetch handler - runs at 00:00 UTC
+ * Full weekly fetch handler - runs at 00:00 UTC
  */
 export async function handleDailyFullFetch(env) {
-  console.log("[DAILY] Starting scheduled full fetch");
+  console.log("[WEEKLY] Starting scheduled full fetch");
   try {
     const result = await fetchFullNews(env);
-    console.log("[DAILY] Completed successfully");
+    console.log("[WEEKLY] Completed successfully");
     return result;
   } catch (e) {
-    console.log("[DAILY] Failed:", e?.message);
-    // Don't throw - let the cron continue, retry will happen on next run (5 min later via cron)
+    console.log("[WEEKLY] Failed:", e?.message);
+    // Don't throw - let the cron continue, retry will happen on next run
     return { error: e?.message };
   }
 }

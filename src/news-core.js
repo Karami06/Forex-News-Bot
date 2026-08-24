@@ -2,7 +2,17 @@ import { CURRENCY_MAP } from "./config.js";
 import { TIMEZONES, DEFAULT_TZ, TV_DEFAULT, tvLink, KEY_EVENTS } from "./config.js";
 import { nowInTz, todayInTz, tomorrowInTz, weekInTz, formatDayHeader } from "./calendar.js";
 import { t } from "./translations.js";
-import { getDailyCache, setDailyCache, getMeta, setMeta, mergeIncremental, deleteOldCache, buildDailyCache } from "./cache.js";
+import { 
+  getWeeklyCache, 
+  setWeeklyCache, 
+  getMeta, 
+  setMeta, 
+  mergeIncrementalWeekly, 
+  deleteOldCache, 
+  buildWeeklyCache,
+  getEventsForDate,
+  getEventsForRange
+} from "./cache.js";
 
 export const NEWS_URLS = [
   "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
@@ -62,28 +72,51 @@ async function fetchFromSource() {
 }
 
 /**
- * Full daily fetch - runs at 00:00 UTC
- * Fetches from source and populates cache for today and tomorrow
+ * Get Monday of current week (UTC)
+ */
+function getCurrentWeekMonday() {
+  const now = new Date();
+  const dow = now.getUTCDay(); // 0 = Sunday
+  const offsetToMon = (dow + 6) % 7; // days to subtract to get Monday
+  const monday = new Date(now);
+  monday.setUTCDate(monday.getUTCDate() - offsetToMon);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday.toISOString().slice(0, 10);
+}
+
+/**
+ * Get Monday of next week (UTC)
+ */
+function getNextWeekMonday() {
+  const monday = getCurrentWeekMonday();
+  const d = new Date(monday + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Full weekly fetch - runs at 00:00 UTC
+ * Fetches from source and populates cache for current week + next week
  */
 export async function fetchFullNews(env) {
-  console.log("[NEWS] Starting daily full fetch");
+  console.log("[NEWS] Starting weekly full fetch");
   const rawItems = await fetchFromSource();
   if (!rawItems.length) {
     throw new Error("Full fetch returned no items");
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const thisWeekMonday = getCurrentWeekMonday();
+  const nextWeekMonday = getNextWeekMonday();
 
-  // Build cache for today
-  const todayCache = buildDailyCache(rawItems, today);
-  todayCache.events.forEach(e => e.source = 'full');
-  await setDailyCache(env, today, todayCache);
+  // Build cache for this week
+  const thisWeekCache = buildWeeklyCache(rawItems, thisWeekMonday);
+  thisWeekCache.events.forEach(e => e.source = 'full');
+  await setWeeklyCache(env, thisWeekMonday, thisWeekCache);
 
-  // Build cache for tomorrow
-  const tomorrowCache = buildDailyCache(rawItems, tomorrow);
-  tomorrowCache.events.forEach(e => e.source = 'full');
-  await setDailyCache(env, tomorrow, tomorrowCache);
+  // Build cache for next week
+  const nextWeekCache = buildWeeklyCache(rawItems, nextWeekMonday);
+  nextWeekCache.events.forEach(e => e.source = 'full');
+  await setWeeklyCache(env, nextWeekMonday, nextWeekCache);
 
   // Update meta
   await setMeta(env, {
@@ -95,13 +128,13 @@ export async function fetchFullNews(env) {
   // Clean old cache
   await deleteOldCache(env);
 
-  console.log(`[NEWS] Full fetch complete: today=${todayCache.events.length}, tomorrow=${tomorrowCache.events.length}`);
-  return { today: todayCache.events, tomorrow: tomorrowCache.events };
+  console.log(`[NEWS] Full fetch complete: thisWeek=${thisWeekCache.events.length}, nextWeek=${nextWeekCache.events.length}`);
+  return { thisWeek: thisWeekCache.events, nextWeek: nextWeekCache.events };
 }
 
 /**
  * Incremental fetch - runs every 15 minutes
- * Fetches from source and merges into today/tomorrow cache
+ * Fetches from source and merges into current week + next week cache
  */
 export async function fetchIncrementalNews(env) {
   console.log("[NEWS] Starting incremental fetch");
@@ -110,29 +143,19 @@ export async function fetchIncrementalNews(env) {
     throw new Error("Incremental fetch returned no items");
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const thisWeekMonday = getCurrentWeekMonday();
+  const nextWeekMonday = getNextWeekMonday();
 
-  // Filter raw items for today and tomorrow
-  const todayItems = rawItems.filter(item => {
-    const itemDate = new Date(item._rawDate || item._utcMs).toISOString().slice(0, 10);
-    return itemDate === today;
-  });
-  const tomorrowItems = rawItems.filter(item => {
-    const itemDate = new Date(item._rawDate || item._utcMs).toISOString().slice(0, 10);
-    return itemDate === tomorrow;
-  });
-
-  const todayResult = await mergeIncremental(env, today, todayItems);
-  const tomorrowResult = await mergeIncremental(env, tomorrow, tomorrowItems);
+  const thisWeekResult = await mergeIncrementalWeekly(env, thisWeekMonday, rawItems);
+  const nextWeekResult = await mergeIncrementalWeekly(env, nextWeekMonday, rawItems);
 
   // Update meta
   const meta = await getMeta(env) || { lastFullFetch: null, lastIncrementalFetch: null, consecutiveFailures: 0 };
   meta.lastIncrementalFetch = Date.now();
   await setMeta(env, meta);
 
-  console.log(`[NEWS] Incremental fetch complete: today +${todayResult.added}/~${todayResult.updated}/-${todayResult.removed}, tomorrow +${tomorrowResult.added}/~${tomorrowResult.updated}/-${tomorrowResult.removed}`);
-  return { today: todayResult, tomorrow: tomorrowResult };
+  console.log(`[NEWS] Incremental fetch complete: thisWeek +${thisWeekResult.added}/~${thisWeekResult.updated}/-${thisWeekResult.removed}, nextWeek +${nextWeekResult.added}/~${nextWeekResult.updated}/-${nextWeekResult.removed}`);
+  return { thisWeek: thisWeekResult, nextWeek: nextWeekResult };
 }
 
 /**
@@ -141,38 +164,21 @@ export async function fetchIncrementalNews(env) {
  */
 export async function fetchNews(env) {
   const today = new Date().toISOString().slice(0, 10);
+  const monday = getCurrentWeekMonday();
   
   // Try cache first
-  const cached = await getDailyCache(env, today);
+  const cached = await getWeeklyCache(env, monday);
   if (cached?.events?.length) {
-    console.log(`[NEWS] Cache hit: ${cached.events.length} items for ${today}`);
-    // Convert cached format back to legacy format for compatibility
-    return cached.events.map(e => ({
-      _rawDate: e.date,
-      _utcMs: e.timestamp,
-      c: e.country,
-      e: e.title,
-      i: e.impact,
-      a: e.actual,
-      f: e.forecast,
-      p: e.previous,
-    }));
+    console.log(`[NEWS] Cache hit: ${cached.events.length} items for week ${monday}`);
+    // Return today's events in legacy format
+    return getEventsForDate(cached, today);
   }
 
-  console.log(`[NEWS] Cache miss for ${today}, attempting full fetch`);
+  console.log(`[NEWS] Cache miss for week ${monday}, attempting full fetch`);
   // Fallback: try full fetch
   try {
     const result = await fetchFullNews(env);
-    return result.today.map(e => ({
-      _rawDate: e.date,
-      _utcMs: e.timestamp,
-      c: e.country,
-      e: e.title,
-      i: e.impact,
-      a: e.actual,
-      f: e.forecast,
-      p: e.previous,
-    }));
+    return getEventsForDate({ events: result.thisWeek }, today);
   } catch (e) {
     console.log("[NEWS] Full fetch fallback failed:", e?.message);
     return [];
@@ -184,28 +190,76 @@ export async function fetchNews(env) {
  * Returns cached events in the new format with all metadata
  */
 export async function getCachedNews(env, dateStr) {
-  const cached = await getDailyCache(env, dateStr);
+  const monday = getCurrentWeekMonday();
+  const cached = await getWeeklyCache(env, monday);
   if (!cached?.events?.length) return [];
   
   // Convert to legacy format for compatibility with existing code
-  return cached.events.map(e => ({
-    _rawDate: e.date,
-    _utcMs: e.timestamp,
-    c: e.country,
-    e: e.title,
-    i: e.impact,
-    a: e.actual,
-    f: e.forecast,
-    p: e.previous,
-  }));
+  return getEventsForDate(cached, dateStr);
 }
 
 /**
- * Check if cache module is ready (has data for today)
+ * Get cached news for today and tomorrow (for status endpoint)
+ */
+export async function getCachedNewsTodayTomorrow(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const monday = getCurrentWeekMonday();
+  const cached = await getWeeklyCache(env, monday);
+  if (!cached?.events?.length) return { today: [], tomorrow: [] };
+  
+  return {
+    today: getEventsForDate(cached, today),
+    tomorrow: getEventsForDate(cached, tomorrow)
+  };
+}
+
+/**
+ * Get cached news for the whole week (for /news weekly)
+ */
+export async function getCachedNewsWeek(env) {
+  const monday = getCurrentWeekMonday();
+  const cached = await getWeeklyCache(env, monday);
+  if (!cached?.events?.length) return [];
+  
+  // Return all events in legacy format
+  return getEventsForRange(cached, cached.weekStart, cached.weekEnd);
+}
+
+/**
+ * Get cached news with all metadata (for scheduled jobs that need sentFlags)
+ */
+export async function getCachedNewsWithMeta(env, dateStr) {
+  const monday = getCurrentWeekMonday();
+  const cached = await getWeeklyCache(env, monday);
+  if (!cached?.events?.length) return [];
+  
+  // Return events with full metadata (including sentFlags)
+  return cached.events.filter(e => e.date === dateStr);
+}
+
+/**
+ * Update sentFlags in cache for a specific event
+ */
+export async function updateSentFlags(env, eventId, flags) {
+  const monday = getCurrentWeekMonday();
+  const cached = await getWeeklyCache(env, monday);
+  if (!cached?.events?.length) return false;
+  
+  const eventIndex = cached.events.findIndex(e => e.id === eventId);
+  if (eventIndex === -1) return false;
+  
+  cached.events[eventIndex].sentFlags = { ...cached.events[eventIndex].sentFlags, ...flags };
+  await setWeeklyCache(env, monday, cached);
+  return true;
+}
+
+/**
+ * Check if cache module is ready (has data for current week)
  */
 export async function cacheModuleReady(env) {
-  const today = new Date().toISOString().slice(0, 10);
-  const cached = await getDailyCache(env, today);
+  const monday = getCurrentWeekMonday();
+  const cached = await getWeeklyCache(env, monday);
   return !!(cached?.events?.length);
 }
 
@@ -214,16 +268,8 @@ export async function refreshNews(env) {
   console.log("[NEWS] Manual refresh triggered");
   try {
     const result = await fetchFullNews(env);
-    return result.today.map(e => ({
-      _rawDate: e.date,
-      _utcMs: e.timestamp,
-      c: e.country,
-      e: e.title,
-      i: e.impact,
-      a: e.actual,
-      f: e.forecast,
-      p: e.previous,
-    }));
+    const today = new Date().toISOString().slice(0, 10);
+    return getEventsForDate({ events: result.thisWeek }, today);
   } catch (e) {
     console.log("[NEWS] Refresh failed:", e?.message);
     return fetchNews(env); // Return cached as fallback
@@ -352,6 +398,10 @@ export function fmtWeeklyCalendar(news, cfg) {
       let line = `${impactIcon} ${item._evtTime} \u{25AA} ${item.c} ${item.e}`;
       if (hasActual) {
         line += ` \u{2714} ${item.a}`;
+      }
+      // Strikethrough for released events
+      if (isReleased) {
+        line = `<s>${line}</s>`;
       }
       msg += `${line}\n`;
     }

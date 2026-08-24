@@ -1,5 +1,5 @@
 import { getGroups, getCfg } from "./storage.js";
-import { getCachedNews, filterNews, getEventTimeInTz } from "./news.js";
+import { getCachedNews, getCachedNewsWithMeta, updateSentFlags, filterNews, getEventTimeInTz } from "./news.js";
 import { nowInTz, todayInTz } from "./calendar.js";
 import { tgSendHTML } from "./telegram.js";
 import { TV_DEFAULT, tvLink } from "./config.js";
@@ -17,7 +17,7 @@ export async function sendPostNews(env) {
   if (!gs.length) return;
 
   // Get fresh data from cache (which is updated by incremental fetch every 15 min)
-  const news = await getCachedNews(env);
+  const news = await getCachedNewsWithMeta(env);
   if (!news.length) return;
 
   for (const gid of gs) {
@@ -76,6 +76,9 @@ export async function sendPostNews(env) {
           await tgSendHTML(env, gid, msg);
           // Keep deduplication for 24 hours to avoid re-sending after a restart or delayed data.
           await env.KV.put(dedupKey, "1", { expirationTtl: 86400 });
+          
+          // Update sentFlags in cache
+          await updateSentFlags(env, item.id, { postReleaseCheck: true });
         }
       }
     } catch (e) { console.log(`Post-news err ${gid}:`, e); }
