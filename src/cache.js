@@ -8,6 +8,30 @@ const CACHE_TTL_WEEKLY = 7 * 24 * 60 * 60; // 7 days in seconds
 const CACHE_TTL_META = 7 * 24 * 60 * 60; // 7 days in seconds
 const MAX_INCREMENTAL_UPDATES = 50;
 
+// Import timezone conversion from config
+import { TIMEZONES, DEFAULT_TZ } from "./config.js";
+
+/**
+ * Convert cached event to timezone-specific time
+ * @param {Object} item - Cached event
+ * @param {string} tzId - Timezone ID
+ * @returns {Object} Time in timezone {t, _date}
+ */
+function getEventTimeInTz(item, tzId) {
+  const tz = TIMEZONES.find(t => t.id === tzId) || TIMEZONES.find(t => t.id === DEFAULT_TZ);
+  let utcMs = item.timestamp;
+  if (utcMs === undefined || isNaN(utcMs)) {
+    const d = new Date(item._rawDate || item.date);
+    if (isNaN(d.getTime())) return { t: "00:00", _date: "1970-01-01" };
+    utcMs = d.getTime();
+  }
+  const d = new Date(utcMs + Math.round(tz.offset * 60) * 60000);
+  return {
+    t: `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`,
+    _date: d.toISOString().slice(0, 10),
+  };
+}
+
 /**
  * Get the weekly cache for a specific week (Monday-Sunday)
  * @param {Object} env - Cloudflare Workers environment with KV binding
@@ -236,16 +260,20 @@ export function buildWeeklyCache(rawItems, mondayStr) {
 }
 
 /**
- * Get events for a specific date from weekly cache
+ * Get events for a specific date from weekly cache with timezone awareness
  * @param {Object} weeklyCache - WeeklyNewsCache object
- * @param {string} dateStr - Date in YYYY-MM-DD format (UTC)
+ * @param {string} dateStr - Date in YYYY-MM-DD format (in user's timezone)
+ * @param {string} userTz - User's timezone ID
  * @returns {Array} Events for that date in legacy format
  */
-export function getEventsForDate(weeklyCache, dateStr) {
+export function getEventsForDateTz(weeklyCache, dateStr, userTz) {
   if (!weeklyCache?.events?.length) return [];
   
   return weeklyCache.events
-    .filter(e => e.date === dateStr)
+    .filter(e => {
+      const evt = getEventTimeInTz(e, userTz);
+      return evt._date === dateStr;
+    })
     .map(e => ({
       _rawDate: e.date,
       _utcMs: e.timestamp,

@@ -10,8 +10,7 @@ import {
   mergeIncrementalWeekly, 
   deleteOldCache, 
   buildWeeklyCache,
-  getEventsForDate,
-  getEventsForRange
+  getEventsForDateTz
 } from "./cache.js";
 
 export const NEWS_URLS = [
@@ -171,14 +170,14 @@ export async function fetchNews(env) {
   if (cached?.events?.length) {
     console.log(`[NEWS] Cache hit: ${cached.events.length} items for week ${monday}`);
     // Return today's events in legacy format
-    return getEventsForDate(cached, today);
+    return getEventsForDateTz(cached, today, "Asia/Tehran");
   }
 
   console.log(`[NEWS] Cache miss for week ${monday}, attempting full fetch`);
   // Fallback: try full fetch
   try {
     const result = await fetchFullNews(env);
-    return getEventsForDate({ events: result.thisWeek }, today);
+    return getEventsForDateTz({ events: result.thisWeek }, today, "Asia/Tehran");
   } catch (e) {
     console.log("[NEWS] Full fetch fallback failed:", e?.message);
     return [];
@@ -189,41 +188,73 @@ export async function fetchNews(env) {
  * Get cached news for a specific date (used by scheduled jobs)
  * Returns cached events in the new format with all metadata
  */
-export async function getCachedNews(env, dateStr) {
+export async function getCachedNews(env, dateStr, userTz) {
   const monday = getCurrentWeekMonday();
   const cached = await getWeeklyCache(env, monday);
   if (!cached?.events?.length) return [];
   
   // Convert to legacy format for compatibility with existing code
-  return getEventsForDate(cached, dateStr);
+  // Filter by user's timezone date
+  const targetTz = userTz || "Asia/Tehran";
+  return cached.events
+    .filter(e => {
+      const evt = getEventTimeInTz(e, targetTz);
+      return evt._date === dateStr;
+    })
+    .map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
 }
 
 /**
  * Get cached news for today and tomorrow (for status endpoint)
  */
-export async function getCachedNewsTodayTomorrow(env) {
+export async function getCachedNewsTodayTomorrow(env, userTz) {
   const today = new Date().toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const monday = getCurrentWeekMonday();
   const cached = await getWeeklyCache(env, monday);
   if (!cached?.events?.length) return { today: [], tomorrow: [] };
   
+  const targetTz = userTz || "Asia/Tehran";
   return {
-    today: getEventsForDate(cached, today),
-    tomorrow: getEventsForDate(cached, tomorrow)
+    today: getEventsForDateTz(cached, today, targetTz),
+    tomorrow: getEventsForDateTz(cached, tomorrow, targetTz)
   };
 }
 
 /**
  * Get cached news for the whole week (for /news weekly)
  */
-export async function getCachedNewsWeek(env) {
+export async function getCachedNewsWeek(env, userTz) {
   const monday = getCurrentWeekMonday();
   const cached = await getWeeklyCache(env, monday);
   if (!cached?.events?.length) return [];
   
+  const targetTz = userTz || "Asia/Tehran";
   // Return all events in legacy format
-  return getEventsForRange(cached, cached.weekStart, cached.weekEnd);
+  return cached.events
+    .filter(e => {
+      const evt = getEventTimeInTz(e, targetTz);
+      return evt._date >= cached.weekStart && evt._date <= cached.weekEnd;
+    })
+    .map(e => ({
+      _rawDate: e.date,
+      _utcMs: e.timestamp,
+      c: e.country,
+      e: e.title,
+      i: e.impact,
+      a: e.actual,
+      f: e.forecast,
+      p: e.previous,
+    }));
 }
 
 /**
@@ -269,7 +300,7 @@ export async function refreshNews(env) {
   try {
     const result = await fetchFullNews(env);
     const today = new Date().toISOString().slice(0, 10);
-    return getEventsForDate({ events: result.thisWeek }, today);
+    return getEventsForDateTz({ events: result.thisWeek }, today, "Asia/Tehran");
   } catch (e) {
     console.log("[NEWS] Refresh failed:", e?.message);
     return fetchNews(env); // Return cached as fallback
