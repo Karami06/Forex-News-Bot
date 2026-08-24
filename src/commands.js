@@ -117,6 +117,10 @@ export async function handleCmd(env, cid, ct, text, msg) {
       post: cfg.post,
       auto: cfg.auto,
       days: cfg.days,
+      weekend: cfg.weekend,
+      compact: cfg.compact,
+      sessionAlerts: cfg.sessionAlerts,
+      dailyRecap: cfg.dailyRecap,
     };
     const encoded = btoa(JSON.stringify(exportData));
     await tgSend(env, cid, `\u{1F3AB} *Export Config*\n\nCopy this code to backup or share your settings:\n\n\`${encoded}\``);

@@ -26,7 +26,7 @@ export async function rmGroup(env, gid) {
   if (i >= 0) {
     gs.splice(i, 1);
     await env.KV.put("g:list", JSON.stringify(gs));
-    for (const k of ["c", "cc", "i", "tt", "tm", "tz", "lang", "subs", "pre", "post", "auto", "days"])
+    for (const k of ["c", "cc", "i", "tt", "tm", "tz", "lang", "subs", "pre", "post", "auto", "days", "weekend", "compact", "sessionAlerts", "dailyRecap"])
       await env.KV.delete(`g:${gid}:${k}`);
     return true;
   }

@@ -18,14 +18,15 @@ export async function sendScheduled(env) {
       const currentMin = tzNow.h * 60 + tzNow.m;
       const todayDate = todayInTz(userTz);
       const tomorrowDate = tomorrowInTz(userTz);
+      
+      const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      
       if (cfg.days && cfg.days.length > 0) {
-        const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
         const todayName = dayNames[new Date().getUTCDay()];
         if (!cfg.days.includes(todayName)) continue;
       }
       // Weekend Silence: skip if enabled and today is weekend (Sat/Sun) in user's timezone
       if (cfg.weekend !== false) {
-        const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
         const todayName = dayNames[tzNow.getUTCDay()];
         if (todayName === "sat" || todayName === "sun") continue;
       }
