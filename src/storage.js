@@ -48,7 +48,8 @@ export async function getCfg(env, gid) {
     auto: true,
     days: [],
     weekend: true,
-    compact: false,  // Compact mode: shorter messages without F/P/TradingView
+    compact: false,
+    sessionAlerts: { open: [], close: [] },  // Session alerts: which sessions to alert for open/close
   };
   try {
     for (const k of ["c", "cc", "i", "subs", "days"]) {
@@ -69,6 +70,8 @@ export async function getCfg(env, gid) {
     if (weekendVal !== null) c.weekend = weekendVal === "true";
     const compactVal = await env.KV.get(`g:${gid}:compact`);
     if (compactVal !== null) c.compact = compactVal === "true";
+    const sessionAlertsVal = await env.KV.get(`g:${gid}:sessionAlerts`);
+    if (sessionAlertsVal !== null) c.sessionAlerts = JSON.parse(sessionAlertsVal);
   } catch {}
   return c;
 }

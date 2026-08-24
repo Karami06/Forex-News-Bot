@@ -3,6 +3,7 @@ import { handleCmd } from "./commands.js";
 import { sendScheduled } from "./auto-send.js";
 import { sendAlerts } from "./alerts.js";
 import { sendPostNews } from "./post-news.js";
+import { sendSessionAlerts } from "./session-alerts.js";
 import { getGroups, getCfg } from "./storage.js";
 import { fetchNews, filterNews, fmtNews, getEventTimeInTz } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, minsSinceMidnight, timeToMin, nowInTz } from "./calendar.js";
@@ -73,6 +74,7 @@ export default {
     await sendScheduled(env);
     await sendAlerts(env);
     await sendPostNews(env);
+    await sendSessionAlerts(env);
     console.log(`[CRON] Complete`);
   },
 };

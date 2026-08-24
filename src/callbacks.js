@@ -1,7 +1,7 @@
 import { getGroups, getCfg, setCfg, addGroup, rmGroup } from "./storage.js";
 import { t } from "./translations.js";
 import { tgAnswer, tgEdit, tgSend, tgSendHTML, isAdmin } from "./telegram.js";
-import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb, compactKb } from "./keyboards.js";
+import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb, compactKb, sessionAlertsKb } from "./keyboards.js";
 import { handleNews, handleWeeklyCalendar } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, nowInTz, getSessionsStatus, TIMEZONES } from "./calendar.js";
 import { DEFAULT_CURRENCIES } from "./config.js";
@@ -222,6 +222,32 @@ export async function handleCb(env, cb) {
     await tgAnswer(env, cbid, "");
     await setCfg(env, cid, "compact", (!cfg.compact).toString());
     return tgEdit(env, cid, mid, `\u{1F504} *${t(lang, "compact_mode")}*`, compactKb(!cfg.compact, lang));
+  }
+
+  // Session Alerts
+  if (data === "menu:session_alerts") {
+    await tgAnswer(env, cbid, "");
+    return tgEdit(env, cid, mid, `\u{1F30D} *${t(lang, "sessions")}*`, sessionAlertsKb(cfg, lang));
+  }
+  if (data.startsWith("session:open:")) {
+    const sessionName = data.slice(13);
+    await tgAnswer(env, cbid, "");
+    const currentOpen = cfg.sessionAlerts?.open || [];
+    const newOpen = currentOpen.includes(sessionName) 
+      ? currentOpen.filter(s => s !== sessionName) 
+      : [...currentOpen, sessionName];
+    await setCfg(env, cid, "sessionAlerts", { ...cfg.sessionAlerts, open: newOpen });
+    return tgEdit(env, cid, mid, `\u{1F30D} *${t(lang, "sessions")}*`, sessionAlertsKb({ ...cfg, sessionAlerts: { ...cfg.sessionAlerts, open: newOpen } }, lang));
+  }
+  if (data.startsWith("session:close:")) {
+    const sessionName = data.slice(14);
+    await tgAnswer(env, cbid, "");
+    const currentClose = cfg.sessionAlerts?.close || [];
+    const newClose = currentClose.includes(sessionName)
+      ? currentClose.filter(s => s !== sessionName)
+      : [...currentClose, sessionName];
+    await setCfg(env, cid, "sessionAlerts", { ...cfg.sessionAlerts, close: newClose });
+    return tgEdit(env, cid, mid, `\u{1F30D} *${t(lang, "sessions")}*`, sessionAlertsKb({ ...cfg, sessionAlerts: { ...cfg.sessionAlerts, close: newClose } }, lang));
   }
 
   // News preview

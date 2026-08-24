@@ -29,6 +29,7 @@ export function settingsKb(lang) {
     [btn(`\u{1F504} ${t(lang, "auto_send")}`, "menu:auto")],
     [btn(`\u{1F4C5} ${t(lang, "weekend_silence")}`, "menu:weekend")],
     [btn(`\u{1F504} ${t(lang, "compact_mode")}`, "menu:compact")],
+    [btn(`\u{1F30D} ${t(lang, "sessions")}`, "menu:session_alerts")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:main")],
   ]);
 }
@@ -172,4 +173,19 @@ export function compactKb(val, lang) {
     [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "compact_on") : t(lang, "compact_off")}`, "toggle:compact")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
   ]);
+}
+
+export function sessionAlertsKb(cfg, lang) {
+  const sessions = ["Sydney", "Tokyo", "London", "New York"];
+  const rows = [];
+  for (const s of sessions) {
+    const openEnabled = cfg.sessionAlerts?.open?.includes(s);
+    const closeEnabled = cfg.sessionAlerts?.close?.includes(s);
+    rows.push([
+      btn(`${openEnabled ? "\u2705" : "\u274C"} ${s} Open`, `session:open:${s}`),
+      btn(`${closeEnabled ? "\u2705" : "\u274C"} ${s} Close`, `session:close:${s}`),
+    ]);
+  }
+  rows.push([btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")]);
+  return kb(rows);
 }
