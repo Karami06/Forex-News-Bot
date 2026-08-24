@@ -104,3 +104,19 @@ export const TV_DEFAULT = {
 export function tvLink(pair) {
   return `https://www.tradingview.com/symbols/${pair}/`;
 }
+
+// کلیدی‌ترین رویدادهای اقتصادی — Smart Highlight
+export const KEY_EVENTS = {
+  "NFP": { key: "Nonfarm Payrolls", reason: "key_nonfarm" },
+  "Non-Farm": { key: "Nonfarm Payrolls", reason: "key_nonfarm" },
+  "FOMC": { key: "FOMC", reason: "key_fomc" },
+  "CPI": { key: "CPI", reason: "key_cpi" },
+  "Interest Rate": { key: "Interest Rate", reason: "key_rate" },
+  "Fed": { key: "Federal Reserve", reason: "key_fed" },
+  "ECB": { key: "European Central Bank", reason: "key_ecb" },
+  "BOJ": { key: "Bank of Japan", reason: "key_boj" },
+  "GDP": { key: "GDP", reason: "key_gdp" },
+  "Unemployment": { key: "Unemployment", reason: "key_unemploy" },
+  "Retail Sales": { key: "Retail Sales", reason: "key_retail" },
+  "PMI": { key: "PMI", reason: "key_pmi" },
+};

@@ -1,5 +1,5 @@
 import { CURRENCY_MAP } from "./config.js";
-import { TIMEZONES, DEFAULT_TZ, TV_DEFAULT, tvLink } from "./config.js";
+import { TIMEZONES, DEFAULT_TZ, TV_DEFAULT, tvLink, KEY_EVENTS } from "./config.js";
 import { nowInTz, todayInTz, tomorrowInTz, weekInTz, formatDayHeader } from "./calendar.js";
 import { t } from "./translations.js";
 
@@ -138,24 +138,35 @@ export function fmtNews(items, nt, cfg) {
   ];
 
   for (const sec of sections) {
-      if (!sec.items.length) continue;
-      msg += `<b>${sec.label}</b>\n`;
-      for (const item of sec.items) {
-        const evt = getEventTimeInTz(item, userTz);
-        const itemMin = parseInt(evt.t.split(":")[0]) * 60 + parseInt(evt.t.split(":")[1]);
-        const released = nt === "today" && itemMin <= currentMin;
-        const timeStr = released ? `<s>${evt.t} </s>` : evt.t;
-        msg += `\n\u{25B6} ${timeStr}  <b>${item.c}</b> | ${item.e}\n`;
-        if (item.a && released) {
-          msg += `    \u{2705} <b>A: ${item.a}</b>  |  F: ${item.f || "-" }  |  P: ${item.p || "-"}\n`;
-        } else if (item.f || item.p) {
-          msg += `    \u{1F4CA} F: ${item.f || "-"}  |  P: ${item.p || "-"}\n`;
+        if (!sec.items.length) continue;
+        msg += `<b>${sec.label}</b>\n`;
+        for (const item of sec.items) {
+          const evt = getEventTimeInTz(item, userTz);
+          const itemMin = parseInt(evt.t.split(":")[0]) * 60 + parseInt(evt.t.split(":")[1]);
+          const released = nt === "today" && itemMin <= currentMin;
+          const timeStr = released ? `${evt.t}  </s>` : evt.t;
+        
+          // Smart Highlight: check if title matches KEY_EVENTS
+          let highlight = "";
+          const titleUpper = item.e.toUpperCase();
+          for (const [keyword, info] of Object.entries(KEY_EVENTS)) {
+            if (titleUpper.includes(keyword.toUpperCase())) {
+              highlight = ` ⚡⚡ <i>${t(lang, info.reason)}</i>`;
+              break;
+            }
+          }
+        
+          msg += `\n\u{25B6} ${timeStr}  <b>${item.c}</b> | ${item.e}${highlight}\n`;
+          if (item.a && released) {
+            msg += `    \u{2705} <b>A: ${item.a}</b>  |  F: ${item.f || "-" }  |  P: ${item.p || "-"}\n`;
+          } else if (item.f || item.p) {
+            msg += `    \u{1F4CA} F: ${item.f || "-"}  |  P: ${item.p || "-"}\n`;
+          }
+          const tvPair = TV_DEFAULT[item.c.toUpperCase()];
+          if (tvPair) msg += `    \u{1F310} <a href="${tvLink(tvPair)}">${t(lang, "trading_view")}</a>\n`;
         }
-        const tvPair = TV_DEFAULT[item.c.toUpperCase()];
-        if (tvPair) msg += `    \u{1F310} <a href="${tvLink(tvPair)}">${t(lang, "trading_view")}</a>\n`;
+        msg += "\n";
       }
-      msg += "\n";
-    }
 
   msg += `\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n`;
   msg += `\u{2139}\u{FE0F} ${t(lang, "source")}  |  ${tz}`;
