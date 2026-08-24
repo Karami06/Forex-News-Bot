@@ -1,6 +1,6 @@
 import { CURRENCY_MAP } from "./config.js";
 import { TIMEZONES, DEFAULT_TZ, TV_DEFAULT, tvLink } from "./config.js";
-import { nowInTz, todayInTz, weekInTz, formatDayHeader } from "./calendar.js";
+import { nowInTz, todayInTz, tomorrowInTz, weekInTz, formatDayHeader } from "./calendar.js";
 import { t } from "./translations.js";
 
 export const NEWS_URLS = [
