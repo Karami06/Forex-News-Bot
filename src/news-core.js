@@ -97,8 +97,12 @@ export async function refreshNews(env) {
 export function filterNews(items, currencies, impacts, currencyCodes) {
   const codes = new Set();
   // If user selected specific indexes (currencyCodes), use ONLY those
+  // An empty array means "no currencies selected" -> match nothing
   if (currencyCodes && currencyCodes.length > 0) {
     for (const cc of currencyCodes) codes.add(cc.toUpperCase());
+  } else if (currencyCodes && currencyCodes.length === 0) {
+    // Empty array explicitly means no currencies selected
+    // codes remains empty -> no items will match
   } else {
     // Otherwise, derive codes from currency pairs
     for (const p of currencies) {

@@ -28,7 +28,7 @@ export function tomorrowInTz(tzId) {
   const offsetMs = tzOffsetMin * 60 * 1000;
   const d = new Date(now.getTime() + offsetMs);
   // If we're past midnight in the target timezone, tomorrow is the next day
-  d.setUTCDate(d.getUTCDate() + (adj >= 0 ? 1 : 0));
+  d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
 
