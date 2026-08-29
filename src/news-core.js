@@ -1,7 +1,10 @@
-import { CURRENCY_MAP } from "./config.js";
+import { IMPACT_OVERRIDES, CURRENCY_MAP } from "./config.js";
+import { fetchNewsWithFallback } from "./news-alternatives.js";
 import { TIMEZONES, DEFAULT_TZ, TV_DEFAULT, tvLink, KEY_EVENTS } from "./config.js";
 import { nowInTz, todayInTz, tomorrowInTz, weekInTz, formatDayHeader } from "./calendar.js";
 import { t } from "./translations.js";
+
+export { fetchNewsWithFallback };
 
 export const NEWS_URLS = [
   "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
@@ -11,16 +14,27 @@ export const NEWS_URLS = [
 export function parseNewsItems(data) {
   if (!data || !data.length) return [];
   return data.map(item => {
-    const d = new Date(item.date);
+    const d = new Date(item._rawDate || item.date || item.pubDate || item.timestamp || item.time);
+    // Override impact اگر تعریف شده باشد — fuzzy match روی title
+    let impact = (item.i || item.impact || "low").toLowerCase();
+    const eventTitle = (item.e || item.title || item.description || "").toUpperCase();
+    if (IMPACT_OVERRIDES) {
+      for (const [key, val] of Object.entries(IMPACT_OVERRIDES)) {
+        if (eventTitle.includes(key.toUpperCase())) {
+          impact = val;
+          break;
+        }
+      }
+    }
     return {
-      _rawDate: item.date,
+      _rawDate: item._rawDate || item.date || item.pubDate || item.timestamp || item.time,
       _utcMs: d.getTime(),
-      c: item.country,
-      e: item.title,
-      i: (item.impact || "low").toLowerCase(),
-      a: item.actual || "",
-      f: item.forecast || "",
-      p: item.previous || "",
+      c: item.c || item.country || "UNKNOWN",
+      e: item.e || item.title || item.description || "",
+      i: impact,
+      a: item.a || item.actual || "",
+      f: item.f || item.forecast || "",
+      p: item.p || item.previous || "",
     };
   });
 }
@@ -41,70 +55,41 @@ export function getEventTimeInTz(item, tzId) {
 }
 
 export async function fetchNews(env) {
-  if (env) {
+  // ابتدا تلاش برای خواندن از کش
+  if (env && env.KV) {
     const cached = await env.KV.get("news:cache");
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (parsed.items && parsed.items.length > 0 && (Date.now() - parsed.ts) < 86400000) {
-          if (parsed.items[0]._utcMs !== undefined) {
-            console.log(`[NEWS] Cache hit: ${parsed.items.length} items`);
-            return parsed.items;
-          }
-          console.log("[NEWS] Old cache format, deleting stale cache");
-          await env.KV.delete("news:cache");
+        if (parsed.items && parsed.items.length) {
+          return parsed.items;
         }
-      } catch (e) { console.log("[NEWS] Cache parse error:", e?.message); }
-    } else {
-      console.log("[NEWS] No cache, fetching from API");
+      } catch (e) {
+        console.log("[NEWS] cache parse error:", e?.message);
+      }
     }
   }
-  for (const url of NEWS_URLS) {
-    try {
-      const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-      if (!r.ok) { console.log(`[NEWS] API ${url} returned ${r.status}`); continue; }
-      const data = await r.json();
-      const items = parseNewsItems(data);
-      console.log(`[NEWS] API ${url} returned ${items.length} items`);
-      if (items.length > 0) {
-        if (env) await env.KV.put("news:cache", JSON.stringify({ ts: Date.now(), items }), { expirationTtl: 86400 });
-        return items;
-      }
-    } catch (e) { console.log(`[NEWS] API ${url} error:`, e?.message); }
-  }
-  console.log("[NEWS] All sources failed, returning empty");
-  return [];
+  // fallback به شبکه
+  const items = await fetchNewsWithFallback(env);
+  if (items.length && env && env.KV) await env.KV.put("news:cache", JSON.stringify({ ts: Date.now(), items }), { expirationTtl: 86400 });
+  return items;
 }
 
 export async function refreshNews(env) {
-  // Fetch fresh data first, only overwrite cache on success
-  for (const url of NEWS_URLS) {
-    try {
-      const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-      if (!r.ok) continue;
-      const data = await r.json();
-      const items = parseNewsItems(data);
-      if (items.length > 0) {
-        if (env) await env.KV.put("news:cache", JSON.stringify({ ts: Date.now(), items }), { expirationTtl: 86400 });
-        return items;
-      }
-    } catch (e) { console.log(`[NEWS] Refresh API error:`, e?.message); }
-  }
-  // If all sources failed, return existing cached data
-  return fetchNews(env);
+  // دریافت تازه‌ترین داده‌ها؛ فقط وقتی موفق شد کش بروز می‌شود
+  const items = await fetchNewsWithFallback(env);
+  if (items.length && env && env.KV) await env.KV.put("news:cache", JSON.stringify({ ts: Date.now(), items }), { expirationTtl: 86400 });
+  return items;
 }
 
 export function filterNews(items, currencies, impacts, currencyCodes) {
   const codes = new Set();
   // If user selected specific indexes (currencyCodes), use ONLY those
-  // An empty array means "no currencies selected" -> match nothing
+  // An empty array OR undefined/null means "no filter" -> match all
   if (currencyCodes && currencyCodes.length > 0) {
     for (const cc of currencyCodes) codes.add(cc.toUpperCase());
-  } else if (currencyCodes && currencyCodes.length === 0) {
-    // Empty array explicitly means no currencies selected
-    // codes remains empty -> no items will match
   } else {
-    // Otherwise, derive codes from currency pairs
+    // Otherwise, derive codes from currency pairs (or match all if no currencies)
     for (const p of currencies) {
       const pu = p.toUpperCase();
       if (CURRENCY_MAP[pu]) codes.add(CURRENCY_MAP[pu]);

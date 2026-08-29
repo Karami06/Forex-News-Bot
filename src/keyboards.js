@@ -176,9 +176,18 @@ export function compactKb(val, lang) {
   ]);
 }
 
-export function dailyRecapKb(val, lang) {
+export function dailyRecapKb(cfg, val, lang) {
   return kb([
     [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "daily_recap_on") : t(lang, "daily_recap_off")}`, "toggle:dailyrecap")],
+    [btn(`${t(lang, "daily_recap_time")}: ${cfg.dailyRecapTime || "23:00"}`, "time:dailyrecap")],
+    [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
+  ]);
+}
+
+export function morningPreviewKb(cfg, val, lang) {
+  return kb([
+    [btn(`${val ? "\u2705" : "\u274C"} ${val ? t(lang, "morning_preview_on") : t(lang, "morning_preview_off")}`, "toggle:morningpreview")],
+    [btn(`${t(lang, "morning_preview_time")}: ${cfg.morningPreviewTime || "06:00"}`, "time:morningpreview")],
     [btn(`\u{2190} ${t(lang, "back")}`, "menu:settings")],
   ]);
 }

@@ -1,7 +1,7 @@
 import { getGroups, getCfg, setCfg, addGroup, rmGroup } from "./storage.js";
 import { t } from "./translations.js";
 import { tgAnswer, tgEdit, tgSend, tgSendHTML, isAdmin } from "./telegram.js";
-import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb, compactKb, sessionAlertsKb, dailyRecapKb } from "./keyboards.js";
+import { mainMenuKb, settingsKb, currencyKb, impactKb, langKb, scheduleKb, timePickerKb, tzKb, sessionsKb, toggleKb, autoSendKb, daysKb, currencyCodeKb, kb, btn, weekendKb, compactKb, sessionAlertsKb, dailyRecapKb, morningPreviewKb } from "./keyboards.js";
 import { handleNews, handleWeeklyCalendar } from "./news.js";
 import { todayInTz, tomorrowInTz, DEFAULT_TZ, nowInTz, getSessionsStatus, TIMEZONES } from "./calendar.js";
 import { DEFAULT_CURRENCIES } from "./config.js";
@@ -122,10 +122,12 @@ export async function handleCb(env, cb) {
     const parts = data.split(":");
     const type = parts[1], unit = parts[2], val = parseInt(parts[3]);
     await tgAnswer(env, cbid, "");
-    let [h, m] = (type === "today" ? cfg.tt : cfg.tm).split(":").map(Number);
+    let [h, m] = (type === "today" ? cfg.tt : type === "tomorrow" ? cfg.tm : type === "dailyrecap" ? (cfg.dailyRecapTime || "23:00") : (cfg.morningPreviewTime || "06:00")).split(":").map(Number);
     if (unit === "h") h = val; else m = val;
     const newTime = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    await setCfg(env, cid, type === "today" ? "tt" : "tm", newTime);
+    let targetKey = type === "today" ? "tt" : type === "tomorrow" ? "tm" : type === "dailyrecap" ? "dailyRecapTime" : "morningPreviewTime";
+    await setCfg(env, cid, targetKey, newTime);
+    let current = type === "today" ? cfg.tt : type === "tomorrow" ? cfg.tm : type === "dailyrecap" ? (cfg.dailyRecapTime || "23:00") : (cfg.morningPreviewTime || "06:00");
     return tgEdit(env, cid, mid, `\u{23F0} *${t(lang, "set_time")}*\n\n\`${newTime}\``, timePickerKb(type, newTime, lang));
   }
 
@@ -227,12 +229,23 @@ export async function handleCb(env, cb) {
   // Daily Recap toggle
   if (data === "menu:dailyrecap") {
     await tgAnswer(env, cbid, "");
-    return tgEdit(env, cid, mid, `\u{1F4CC} *${t(lang, "daily_recap")}*`, dailyRecapKb(cfg.dailyRecap === true, lang));
+    return tgEdit(env, cid, mid, `\u{1F4CC} *${t(lang, "daily_recap")}*`, dailyRecapKb(cfg, cfg.dailyRecap === true, lang));
   }
   if (data === "toggle:dailyrecap") {
     await tgAnswer(env, cbid, "");
     await setCfg(env, cid, "dailyRecap", (!cfg.dailyRecap).toString());
-    return tgEdit(env, cid, mid, `\u{1F4CC} *${t(lang, "daily_recap")}*`, dailyRecapKb(!cfg.dailyRecap, lang));
+    return tgEdit(env, cid, mid, `\u{1F4CC} *${t(lang, "daily_recap")}*`, dailyRecapKb(cfg, !cfg.dailyRecap, lang));
+  }
+
+  // Morning Preview toggle
+  if (data === "menu:morningpreview") {
+    await tgAnswer(env, cbid, "");
+    return tgEdit(env, cid, mid, `\u{1F305} *${t(lang, "morning_preview")}*`, morningPreviewKb(cfg, cfg.morningPreview === true, lang));
+  }
+  if (data === "toggle:morningpreview") {
+    await tgAnswer(env, cbid, "");
+    await setCfg(env, cid, "morningPreview", (!cfg.morningPreview).toString());
+    return tgEdit(env, cid, mid, `\u{1F305} *${t(lang, "morning_preview")}*`, morningPreviewKb(cfg, !cfg.morningPreview, lang));
   }
 
   // Session Alerts

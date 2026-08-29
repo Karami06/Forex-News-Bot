@@ -105,7 +105,6 @@ export function tvLink(pair) {
   return `https://www.tradingview.com/symbols/${pair}/`;
 }
 
-// کلیدی‌ترین رویدادهای اقتصادی — Smart Highlight
 export const KEY_EVENTS = {
   "NFP": { key: "Nonfarm Payrolls", reason: "key_nonfarm" },
   "Non-Farm": { key: "Nonfarm Payrolls", reason: "key_nonfarm" },
@@ -119,4 +118,15 @@ export const KEY_EVENTS = {
   "Unemployment": { key: "Unemployment", reason: "key_unemploy" },
   "Retail Sales": { key: "Retail Sales", reason: "key_retail" },
   "PMI": { key: "PMI", reason: "key_pmi" },
+};
+
+export const IMPACT_OVERRIDES = {
+  "Goods Trade Balance": "high",
+  "Unemployment Claims": "high",
+  "Unemployment": "high",
+  "Trade Balance": "high",
+  "CPI": "high",
+  "GDP": "high",
+  "Interest Rate": "high",
+  // میتوانید موارد دیگر را اضافه کنید
 };

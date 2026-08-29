@@ -26,7 +26,7 @@ export async function rmGroup(env, gid) {
   if (i >= 0) {
     gs.splice(i, 1);
     await env.KV.put("g:list", JSON.stringify(gs));
-    for (const k of ["c", "cc", "i", "tt", "tm", "tz", "lang", "subs", "pre", "post", "auto", "days", "weekend", "compact", "sessionAlerts", "dailyRecap"])
+    for (const k of ["c", "cc", "i", "tt", "tm", "tz", "lang", "subs", "pre", "post", "auto", "days", "weekend", "compact", "sessionAlerts", "dailyRecap", "morningPreview", "dailyRecapTime", "morningPreviewTime"])
       await env.KV.delete(`g:${gid}:${k}`);
     return true;
   }
@@ -51,13 +51,16 @@ export async function getCfg(env, gid) {
     compact: false,
     sessionAlerts: { open: [], close: [] },
     dailyRecap: false,  // Daily recap at end of day
+    morningPreview: false,  // Morning preview at 6 AM
+    dailyRecapTime: "23:00",  // Default 23:00
+    morningPreviewTime: "06:00",  // Default 06:00
   };
   try {
     for (const k of ["c", "cc", "i", "subs", "days"]) {
       const v = await env.KV.get(`g:${gid}:${k}`);
       if (v) c[k] = JSON.parse(v);
     }
-    for (const k of ["tt", "tm", "tz", "lang"]) {
+    for (const k of ["tt", "tm", "tz", "lang", "dailyRecapTime", "morningPreviewTime"]) {
       const v = await env.KV.get(`g:${gid}:${k}`);
       if (v) c[k] = v;
     }
@@ -75,6 +78,8 @@ export async function getCfg(env, gid) {
     if (sessionAlertsVal !== null) c.sessionAlerts = JSON.parse(sessionAlertsVal);
     const dailyRecapVal = await env.KV.get(`g:${gid}:dailyRecap`);
     if (dailyRecapVal !== null) c.dailyRecap = dailyRecapVal === "true";
+    const morningPreviewVal = await env.KV.get(`g:${gid}:morningPreview`);
+    if (morningPreviewVal !== null) c.morningPreview = morningPreviewVal === "true";
   } catch {}
   return c;
 }

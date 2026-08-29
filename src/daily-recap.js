@@ -4,6 +4,7 @@ import { todayInTz, nowInTz } from "./calendar.js";
 import { tgSendHTML } from "./telegram.js";
 import { TV_DEFAULT, tvLink } from "./config.js";
 import { t } from "./translations.js";
+import { kvGet, kvPut } from "./kv-utils.js";
 
 function parseNumeric(val) {
   if (!val || val === "-" || val === "") return NaN;
@@ -36,12 +37,15 @@ export async function sendDailyRecap(env) {
 
       if (!todayItems.length) continue;
 
-      // TIME CHECK: Only send at end of day (23:00-23:59)
-      if (currentMin < 23 * 60 || currentMin >= 24 * 60) continue;
+      // TIME CHECK: Only send at configured time (default 23:00-23:59)
+      const [recapHour, recapMin] = (cfg.dailyRecapTime || "23:00").split(":").map(Number);
+      const recapStartMin = recapHour * 60 + recapMin;
+      const recapEndMin = recapStartMin + 60; // 1 hour window
+      if (currentMin < recapStartMin || currentMin >= recapEndMin) continue;
 
       // Deduplication
       const dedupKey = `recap:${gid}:${todayDate}`;
-      const alreadySent = await env.KV.get(dedupKey);
+      const alreadySent = await kvGet(env, dedupKey);
       if (alreadySent) continue;
 
       const lang = cfg.lang || "en";
@@ -119,19 +123,20 @@ export async function sendDailyRecap(env) {
 
       await tgSendHTML(env, gid, msg);
       // Keep deduplication for 24 hours
-      await env.KV.put(dedupKey, "1", { expirationTtl: 86400 });
+      await kvPut(env, dedupKey, "1", { expirationTtl: 86400 });
     } catch (e) { console.log(`Daily recap err ${gid}:`, e); }
   }
 }
 
 /**
- * Morning Preview - sends at 6:00-7:00 AM with upcoming events for the day
+ * Morning Preview - sends at configured time (default 6:00-7:00 AM) with upcoming events for the day
  */
 export async function sendMorningPreview(env) {
   const gs = await getGroups(env);
   if (!gs.length) return;
 
-  const news = await fetchNews(env);
+  // Always refresh to get fresh data for morning preview
+  const news = await refreshNews(env);
   if (!news.length) return;
 
   for (const gid of gs) {
@@ -150,12 +155,15 @@ export async function sendMorningPreview(env) {
 
       if (!todayItems.length) continue;
 
-      // TIME CHECK: Only send in morning (6:00-7:00)
-      if (currentMin < 6 * 60 || currentMin >= 7 * 60) continue;
+      // TIME CHECK: Only send at configured time (default 6:00-7:00)
+      const [morningHour, morningMin] = (cfg.morningPreviewTime || "06:00").split(":").map(Number);
+      const morningStartMin = morningHour * 60 + morningMin;
+      const morningEndMin = morningStartMin + 60; // 1 hour window
+      if (currentMin < morningStartMin || currentMin >= morningEndMin) continue;
 
       // Deduplication
       const dedupKey = `morning:${gid}:${todayDate}`;
-      const alreadySent = await env.KV.get(dedupKey);
+      const alreadySent = await kvGet(env, dedupKey);
       if (alreadySent) continue;
 
       const lang = cfg.lang || "en";
@@ -201,7 +209,7 @@ export async function sendMorningPreview(env) {
       msg += `ℹ️ ${t(lang, "source")}  |  ${cfg.tz}`;
 
       await tgSendHTML(env, gid, msg);
-      await env.KV.put(`morning:${gid}:${todayDate}`, "1", { expirationTtl: 86400 });
+      await kvPut(env, `morning:${gid}:${todayDate}`, "1", { expirationTtl: 86400 });
     } catch (e) { console.log(`Morning preview err ${gid}:`, e); }
   }
 }

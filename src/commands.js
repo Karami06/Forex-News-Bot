@@ -24,7 +24,8 @@ export async function handleCmd(env, cid, ct, text, msg) {
   }
 
   if (cmd === "/start") {
-    await tgSend(env, cid, `\u{1F30A} *Forex News Bot*\n\n${t("en", "welcome", { name: nm })}\n\n${t("en", "desc")}`, mainMenuKb("en"));
+    const cfg = await getCfg(env, cid);
+    await tgSend(env, cid, `\u{1F30A} *Forex News Bot*\n\n${t(cfg.lang, "welcome", { name: nm })}\n\n${t(cfg.lang, "desc")}`, mainMenuKb(cfg.lang));
   } else if (cmd === "/help" || cmd === "/settings") {
     const cfg = await getCfg(env, cid);
     await tgSend(env, cid, `\u{2699}\u{FE0F} *${t(cfg.lang, "settings")}*`, settingsKb(cfg.lang));
@@ -39,13 +40,21 @@ export async function handleCmd(env, cid, ct, text, msg) {
     }
     await tgSend(env, cid, msgText, sessionsKb(cfg.lang));
   } else if (cmd === "/addgroup") {
+    const adminIds = getAdminIds(env);
+    if (adminIds.length && !adminIds.includes(uid)) {
+      return tgSend(env, cid, "⛔ Admin only.");
+    }
     const gs = await getGroups(env);
     if (gs.includes(cid)) return tgSend(env, cid, "\u{2139}\u{FE0F} Already registered.");
     if (await addGroup(env, cid)) await tgSend(env, cid, `\u{2705} Added!`, settingsKb("en"));
   } else if (cmd === "/removegroup") {
+    const adminIds = getAdminIds(env);
+    if (adminIds.length && !adminIds.includes(uid)) {
+      return tgSend(env, cid, "⛔ Admin only.");
+    }
     if (await rmGroup(env, cid)) await tgSend(env, cid, "\u{2705} Removed.");
   } else if (cmd === "/news") {
-    const cfg = ct !== "private" ? await getCfg(env, cid) : { c: DEFAULT_CURRENCIES, i: DEFAULT_IMPACT, tz: DEFAULT_TZ, lang: "en" };
+    const cfg = ct !== "private" ? await getCfg(env, cid) : { c: DEFAULT_CURRENCIES, i: DEFAULT_IMPACT, cc: [], tz: DEFAULT_TZ, lang: "en" };
     const nt = args[0]?.toLowerCase() || "today";
     if (!["today", "tomorrow"].includes(nt)) return tgSend(env, cid, "Usage: /news today");
     const userTz = cfg.tz || DEFAULT_TZ;
@@ -99,10 +108,18 @@ export async function handleCmd(env, cid, ct, text, msg) {
     await tgSend(env, cid, diag);
     return;
   } else if (cmd === "/forcesend") {
+    const adminIds = getAdminIds(env);
+    if (adminIds.length && !adminIds.includes(uid)) {
+      return tgSend(env, cid, "⛔ Admin only.");
+    }
     const news = await refreshNews(env);
     await tgSend(env, cid, `\u{1F504} Cache refreshed. ${news.length} items available.`);
     return;
   } else if (cmd === "/export") {
+    const adminIds = getAdminIds(env);
+    if (adminIds.length && !adminIds.includes(uid)) {
+      return tgSend(env, cid, "⛔ Admin only.");
+    }
     const cfg = await getCfg(env, cid);
     const exportData = {
       c: cfg.c,
@@ -126,6 +143,10 @@ export async function handleCmd(env, cid, ct, text, msg) {
     await tgSend(env, cid, `\u{1F3AB} *Export Config*\n\nCopy this code to backup or share your settings:\n\n\`${encoded}\``);
     return;
   } else if (cmd === "/import") {
+    const adminIds = getAdminIds(env);
+    if (adminIds.length && !adminIds.includes(uid)) {
+      return tgSend(env, cid, "⛔ Admin only.");
+    }
     if (!args.length) return tgSend(env, cid, "Usage: /import <code>");
     try {
       const decoded = JSON.parse(atob(args[0]));

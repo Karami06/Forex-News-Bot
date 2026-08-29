@@ -1,15 +1,22 @@
-import { fetchNews, filterNews, fmtNews, fmtWeeklyCalendar, refreshNews, getEventTimeInTz } from "./news-core.js";
+import { refreshNews, filterNews, getEventTimeInTz, fmtNews, fmtWeeklyCalendar, fetchNewsWithFallback } from "./news-core.js";
 import { todayInTz, tomorrowInTz } from "./calendar.js";
 import { tgApi, tgSendHTML } from "./telegram.js";
 import { mainMenuKb, calendarKb } from "./keyboards.js";
+import { t } from "./translations.js";
 
-export { fetchNews, filterNews, fmtNews, fmtWeeklyCalendar, refreshNews, getEventTimeInTz };
+export { refreshNews, filterNews, getEventTimeInTz, fmtNews, fmtWeeklyCalendar, fetchNewsWithFallback };
+
+// تابع fetchNews که از منبع‌های پشتیبان استفاده می‌کند
+export async function fetchNews(env) {
+  const items = await refreshNews(env);
+  return items;
+}
 
 export async function handleNews(env, cid, mid, nt, cfg, lang) {
   const userTz = cfg.tz || "Asia/Tehran";
   const todayDate = todayInTz(userTz);
   const tomorrowDate = tomorrowInTz(userTz);
-  const news = await fetchNews(env);
+  const news = await refreshNews(env);
   const filtered = filterNews(news, cfg.c, cfg.i, cfg.cc);
   const targetDate = nt === "today" ? todayDate : tomorrowDate;
   const dayItems = filtered.filter(item => {
@@ -33,15 +40,7 @@ export async function handleNews(env, cid, mid, nt, cfg, lang) {
 }
 
 export async function handleWeeklyCalendar(env, cid, mid, cfg, lang) {
-  const news = await fetchNews(env);
-  const msg = fmtWeeklyCalendar(news, cfg);
-  if (msg.length > 4000) {
-    await tgApi(env, "editMessageText", { chat_id: cid, message_id: mid, text: msg.slice(0, 4000), parse_mode: "Markdown", reply_markup: calendarKb(lang) });
-    const rest = msg.slice(4000);
-    for (let i = 0; i < rest.length; i += 4000) {
-      await tgSendHTML(env, cid, rest.slice(i, i + 4000));
-    }
-  } else {
-    await tgApi(env, "editMessageText", { chat_id: cid, message_id: mid, text: msg, parse_mode: "Markdown", reply_markup: calendarKb(lang) });
-  }
+  const news = await refreshNews(env);
+  let msg = fmtWeeklyCalendar(news, cfg);
+  await tgApi(env, "editMessageText", { chat_id: cid, message_id: mid, text: msg, parse_mode: "Markdown", reply_markup: calendarKb(lang) });
 }

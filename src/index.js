@@ -2,7 +2,7 @@ import { handleCb } from "./callbacks.js";
 import { handleCmd } from "./commands.js";
 import { sendScheduled } from "./auto-send.js";
 import { sendAlerts } from "./alerts.js";
-import { sendPostNews } from "./post-news.js";
+import { sendPostNews, runPostPulse } from "./post-news.js";
 import { sendSessionAlerts } from "./session-alerts.js";
 import { sendDailyRecap, sendMorningPreview } from "./daily-recap.js";
 import { getGroups, getCfg } from "./storage.js";
@@ -61,23 +61,49 @@ export default {
       return new Response(info);
     }
 
-
-
-
     if (url.pathname === "/tick") {
       await sendScheduled(env);
       return new Response("OK");
     }
+
     return new Response("Forex News Bot running");
   },
   async scheduled(event, env) {
       console.log(`[CRON] Fired at ${new Date().toISOString()}`);
-      await sendScheduled(env);
-      await sendAlerts(env);
-      await sendPostNews(env);
-      await sendSessionAlerts(env);
-      await sendDailyRecap(env);
-      await sendMorningPreview(env);
-      console.log(`[CRON] Complete`);
-    },
+    
+      // دو cron داریم: */5 برای کل منطق، * * * * * فقط برای pulse
+      // تشخیص می‌کنیم کدام cron اجرا شده با بررسی دقیقه
+      // در دقیقه ۰ هر دو cron فایر می‌شوند → آن را ۵-دقیقه‌ای در نظر می‌گیریم
+      const now = new Date();
+      const minute = now.getMinutes();
+      const isMinutelyOnly = minute % 5 !== 0;
+    
+      if (!isMinutelyOnly) {
+        // اجرای کامل هر ۵ دقیقه (شامل دقیقه ۰)
+        // گروه‌ها را یک بار می‌خوانیم و به توابع پاس می‌دهیم
+        const groups = await getGroups(env);
+        
+        // خبر را یک بار می‌خوانیم (از کش استفاده می‌شود)
+        const news = await fetchNews(env);
+        
+        for (const gid of groups) {
+          try {
+            const cfg = await getCfg(env, gid);
+            
+            // توابع همه گروه‌ها را با همان groups و news پردازش می‌کنند
+            await sendScheduled(env);
+            await sendAlerts(env);
+            await sendPostNews(env);
+            await sendSessionAlerts(env);
+            await sendDailyRecap(env);
+            await sendMorningPreview(env);
+          } catch (e) { console.log(`Cron error for ${gid}:`, e); }
+        }
+      }
+    
+      // Pulse در هر دو اجرا می‌شود (هر دقیقه)
+      await runPostPulse(env);
+    
+      console.log(`[CRON] Complete (minutelyOnly=${isMinutelyOnly})`);
+  },
 };
